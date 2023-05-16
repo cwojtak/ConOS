@@ -2,6 +2,7 @@
 #define COM_H
 
 #include "../cpu/ports.h"
+#include "screen.h"
 
 int init_serial();
 int serial_received();

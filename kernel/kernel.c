@@ -22,7 +22,7 @@ void kernel_main() {
 	kprint("  Y8888P     Y88P   888  888   Y88888P     Y8888P   \n");
 
 
-	kprint("You are currently in the protected mode shell, type END to stop the machine.\n>");
+	kprint("You are currently in the protected mode shell, type END to stop the machine.\n> ");
 }
 
 void user_input(char *input)
@@ -38,7 +38,8 @@ void user_input(char *input)
 		kprint("HELP - This help menu\n");
 		kprint("END - Stop the CPU\n");
 		kprint("PAGE - Allocate 1000 bytes in memory\n");
-		kprint("\n>");
+		kprint("COM_TEST - Test COM1\n");
+		kprint("\n> ");
 	}
     else if (strcmp(input, "PAGE") == 0)
 	{
@@ -52,8 +53,17 @@ void user_input(char *input)
 		kprint(page_str);
 		kprint(", physical address: ");
 		kprint(phys_str);
-		kprint("\n>");
+		kprint("\n> ");
     }
+    else if (strcmp(input, "COM_TEST") == 0)
+	{
+		const char testString[] = "COM_TEST";
+		for(int i = 0; i < 8; i++)
+		{
+			write_serial(testString[i]);
+		}
+		kprint("\n> ");
+	}
     else
 	{
 		kprint("Invalid Command: ");

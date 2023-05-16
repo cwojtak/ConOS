@@ -22,7 +22,7 @@ kernel.elf: boot/kernel_entry.o ${OBJ}
 	ld -melf_i386 -o $@ -Ttext 0x1000 $^
 
 run: os-image.bin
-	qemu-system-x86_64 -fda $<
+	qemu-system-x86_64 -serial file:serial.log -fda $<
 
 debug: os-image.bin kernel.elf
 	qemu-system-x86_64 -fda os-image.bin &

@@ -13,6 +13,7 @@ int init_serial() {
     port_byte_out(PORT + 0, 0xAE);
 
     if(port_byte_in(PORT + 0) != 0xAE) {
+        kprint("Warning: Failed to initialize COM1.\n");
         return 1;
     }
 
@@ -37,5 +38,5 @@ int is_transmit_empty() {
 void write_serial(char c) {
     while(is_transmit_empty() == 0);
 
-    port_byte_out(0x3fd, c);
+    port_byte_out(0x3f8, c);
 }
