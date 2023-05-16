@@ -60,9 +60,9 @@ void user_input(char *input)
     }
     else
 	{
-        kprint("Invalid Command: ");
-        kprint(input);
+		kprint("Invalid Command: ");
+		kprint(input);
 		kprint("\nTry HELP for a list of commands.");
-        kprint("\n> ");
+		kprint("\n> ");
     }
 }
