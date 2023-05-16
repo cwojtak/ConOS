@@ -5,6 +5,7 @@
 #include "ports.h"
 #include "timer.h"
 #include "../drivers/keyboard.h"
+//#include "../drivers/com.h"
 
 isr_t interrupt_handlers[256];
 
@@ -149,4 +150,6 @@ void irq_install() {
 	init_timer(50);
 	/* IRQ1 */
 	init_keyboard();
+    /* IRQ4 */
+    //init_serial();
 }
