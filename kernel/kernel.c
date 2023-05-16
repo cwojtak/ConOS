@@ -1,8 +1,4 @@
-#include "../drivers/screen.h"
-#include "../libc/string.h"
 #include "kernel.h"
-#include "../cpu/isr.h"
-#include "../libc/mem.h"
 
 void setEntryPoint(){
 /* Keeps the kernel_entry.asm from jumping to kernel.c:0x00 */

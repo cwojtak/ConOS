@@ -3,6 +3,14 @@
 
 #include <stdint.h>
 
+#include "idt.h"
+#include "../drivers/screen.h"
+#include "../libc/string.h"
+#include "ports.h"
+#include "timer.h"
+#include "../drivers/keyboard.h"
+#include "../drivers/com.h"
+
 extern void isr0();
 extern void isr1();
 extern void isr2();
