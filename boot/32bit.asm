@@ -28,9 +28,16 @@ CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 
 [bits 16]
+load_gdt:
+	cli
+	pusha
+	lgdt [gdt_descriptor]
+	sti
+	popa
+	ret
+
 pm_switch:
         cli 
-        lgdt [gdt_descriptor]
         mov eax, cr0
         or eax, 0x1
         mov cr0, eax
@@ -46,7 +53,7 @@ init_pm:
         mov gs, ax
 
         mov ebp, 0x90000
-        mov esp, ebp
+		mov esp, ebp
 
         call PM
 

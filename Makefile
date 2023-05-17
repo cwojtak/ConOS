@@ -25,8 +25,7 @@ run: os-image.bin
 	qemu-system-x86_64 -serial file:serial.log -fda $<
 
 debug: os-image.bin kernel.elf
-	qemu-system-x86_64 -fda os-image.bin &
-	${GDB} -ex "target remote localhost:1234" -ex "symbol-file kernel.elf"
+	qemu-system-x86_64 -S -s -fda os-image.bin
 
 %.o: %.c ${HEADERS}
 	${CC} ${CFLAGS} -fno-pie -m32 -ffreestanding -c $< -o $@
