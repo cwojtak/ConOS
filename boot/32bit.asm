@@ -40,6 +40,7 @@ pm_switch:
         cli 
         mov eax, cr0
         or eax, 0x1
+        and eax, 0x1f
         mov cr0, eax
         jmp CODE_SEG:init_pm
 

@@ -4,13 +4,16 @@ void setEntryPoint(){
 /* Keeps the kernel_entry.asm from jumping to kernel.c:0x00 */
 }
 
-void kernel_main() {
+void kernel_main(struct multiboot_info* bootInfo) {
 	clear_screen();
 	kprint_at("32-bit switch successful!\n", 0, 0);
 	kprint("Kernel starting...\n");
 	isr_install();
 	irq_install();
 	kprint("CPU and kernel interrupts loaded!\n");
+	char str[16];
+	hex_to_ascii((int)bootInfo->mmap_addr, str);
+	kprint(str);
 
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
 	kprint("d88P  Y88b                   d88P   Y88b d88P  Y88b \n");
