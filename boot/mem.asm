@@ -9,7 +9,7 @@ endstruc
 
 get_memory_map:
 	pushad
-	mov di, 0x9004
+	mov di, 0x9008
 	xor ebx, ebx
 	xor	bp, bp			; number of entries stored here
 	mov	edx, 0x0534D4150		; 'SMAP'
@@ -35,7 +35,7 @@ get_memory_map:
 	jcxz	.skip_entry		; if actual returned bytes is 0, skip entry
 	cmp cl, 20
 	jbe short .notext
-	test byte [es:di + 20] , 1
+	test byte [es:di + 20], 1
 	je short .skip_entry
 .notext:
 	mov ecx, [es:di + 8]
@@ -47,7 +47,7 @@ get_memory_map:
 	test ebx, ebx
 	jne short .e8201p
 .e820f:
-	mov [0x9000], bp
+	mov [0x9004], bp
 	clc
 	popad
 	ret

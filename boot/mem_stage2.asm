@@ -1,4 +1,19 @@
 [bits 16]
+get_memory_size_legacy:
+    int 0x12
+    jc .error
+    test ax, ax
+    je .error
+    cmp ah, 0x86
+    je .error
+    cmp ah, 0x80
+    je .error
+    ret
+.error:
+    mov ax, -1
+    ret
+
+
 get_a20_state:
 	pushf
 	push si

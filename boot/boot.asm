@@ -22,10 +22,10 @@ mov dl, [BOOT_DRIVE]
 call disk_load
 
 call load_gdt
-
-call enable_a20
-
 call get_memory_map
+call get_memory_size_legacy
+mov [0x9000], ax
+call enable_a20
 
 call pm_switch
 jmp $
@@ -44,7 +44,8 @@ PM:
 
 	mov eax, 0x2BADB002
 	mov ebx, 0
-	mov word [boot_info+multiboot_info.mmap_addr], 0x9000
+	mov word [boot_info+multiboot_info.mmap_addr], 0x9008
+	mov word [boot_info+multiboot_info.mmap_length], 0x9004
 
 	push dword boot_info
 
