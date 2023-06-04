@@ -4,13 +4,23 @@ void setEntryPoint(){
 /* Keeps the kernel_entry.asm from jumping to kernel.c:0x00 */
 }
 
+static int shell_context = 0;
+//0 = standard
+//1 = LOG_BLOCK
+
 void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	clear_screen();
 	kprint_at("32-bit switch successful!\n", 0, 0);
 	kprint("Kernel starting...\n");
 	isr_install();
 	irq_install();
-	kprint("CPU and kernel interrupts loaded!\n");
+	log(1, "CPU and kernel interrupts loaded!");
+
+	char legMemMessage[] = "Legacy memory size identified: \0          ";
+	hex_to_ascii(legacyMemorySize, legMemMessage);
+	log(1, legMemMessage);
+
+	prepare_memory_manager((struct MemoryMapEntry*)bootInfo->mmap_addr, bootInfo->mmap_length);
 
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
 	kprint("d88P  Y88b                   d88P   Y88b d88P  Y88b \n");
@@ -27,48 +37,63 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 
 void user_input(char *input)
 {
-    if (strcmp(input, "END") == 0)
+	if(shell_context == 1)
 	{
-        kprint("Stopping the CPU. Bye!\n");
-        asm volatile("hlt");
-    }
-    else if (strcmp(input, "HELP") == 0)
-	{
-		kprint("Available commands:\n");
-		kprint("HELP - This help menu\n");
-		kprint("END - Stop the CPU\n");
-		kprint("PAGE - Allocate 1000 bytes in memory\n");
-		kprint("COM_TEST - Test COM1\n");
-		kprint("\n> ");
+		mm_logblock(atoi(input));
+		shell_context = 0;
+		kprint("> ");
 	}
-    else if (strcmp(input, "PAGE") == 0)
+	else
 	{
-		uint32_t phys_addr;
-		uint32_t page = kmalloc(1000, 1, &phys_addr);
-		char page_str[16] = "";
-		hex_to_ascii(page, page_str);
-		char phys_str[16] = "";
-		hex_to_ascii(phys_addr, phys_str);
-		kprint("Page: ");
-		kprint(page_str);
-		kprint(", physical address: ");
-		kprint(phys_str);
-		kprint("\n> ");
-    }
-    else if (strcmp(input, "COM_TEST") == 0)
-	{
-		const char testString[] = "COM_TEST";
-		for(int i = 0; i < 8; i++)
+		if (strcmp(input, "END") == 0)
 		{
-			write_serial(testString[i]);
+			kprint("Stopping the CPU. Bye!\n");
+			asm volatile("hlt");
 		}
-		kprint("\n> ");
+		else if (strcmp(input, "HELP") == 0)
+		{
+			kprint("Available commands:\n");
+			kprint("HELP - This help menu\n");
+			kprint("END - Stop the CPU\n");
+			kprint("PAGE - Allocate 1000 bytes in memory\n");
+			kprint("COM_TEST - Test COM1\n");
+			kprint("LOG_BLOCK - Log a memory block\n");
+			kprint("> ");
+		}
+		else if (strcmp(input, "PAGE") == 0)
+		{
+			uint32_t phys_addr;
+			uint32_t page = kmalloc(1000, 1, &phys_addr);
+			char page_str[16] = "";
+			hex_to_ascii(page, page_str);
+			char phys_str[16] = "";
+			hex_to_ascii(phys_addr, phys_str);
+			kprint("Page: ");
+			kprint(page_str);
+			kprint(", physical address: ");
+			kprint(phys_str);
+			kprint("\n> ");
+		}
+		else if (strcmp(input, "COM_TEST") == 0)
+		{
+			const char testString[] = "COM_TEST";
+			for(int i = 0; i < 8; i++)
+			{
+				write_serial(testString[i]);
+			}
+			kprint("\n> ");
+		}
+		else if (strcmp(input, "LOG_BLOCK") == 0)
+		{
+			shell_context = 1;
+			kprint("Enter a block number: ");
+		}
+		else
+		{
+			kprint("Invalid Command: ");
+			kprint(input);
+			kprint("\nTry HELP for a list of commands.");
+			kprint("\n> ");
+		}
 	}
-    else
-	{
-		kprint("Invalid Command: ");
-		kprint(input);
-		kprint("\nTry HELP for a list of commands.");
-		kprint("\n> ");
-    }
 }

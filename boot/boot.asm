@@ -45,14 +45,15 @@ PM:
 	mov eax, 0x2BADB002
 	mov ebx, 0
 	mov word [boot_info+multiboot_info.mmap_addr], 0x9008
-	mov word [boot_info+multiboot_info.mmap_length], 0x9004
+	mov word dx, [0x9004]
+	mov word [boot_info+multiboot_info.mmap_length], dx
 
 	push dword boot_info
 
 	call KERNEL_OFFSET
 	jmp $
 
-MSG_PROT_MODE db "Successfully transfered to 32-bit mode!"
+MSG_PROT_MODE db "Successfully switched to 32-bit mode!"
 
 BOOT_DRIVE db 0
 

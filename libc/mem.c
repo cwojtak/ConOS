@@ -1,7 +1,7 @@
 #include "mem.h"
 
-void memory_copy(uint8_t *source, uint8_t *dest, int nbytes) {
-    int i;
+void memory_copy(uint8_t *source, uint8_t *dest, size_t nbytes) {
+    uint32_t i;
     for (i = 0; i < nbytes; i++) {
         *(dest + i) = *(source + i);
     }

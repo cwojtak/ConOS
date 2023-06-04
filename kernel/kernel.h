@@ -5,6 +5,8 @@
 #include "../libc/string.h"
 #include "../cpu/isr.h"
 #include "../libc/mem.h"
+#include "kern_mem.h"
+#include "log.h"
 
 struct multiboot_info {
     uint32_t flags;

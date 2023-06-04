@@ -40,3 +40,17 @@ void write_serial(char c) {
 
     port_byte_out(0x3f8, c);
 }
+
+void write_string_serial(char* c) {
+    for(uint32_t i = 0; c[i] != '\0'; i++) {
+        write_serial(c[i]);
+    }
+    write_serial('\0');
+}
+
+void read_string_serial(char* c) {
+    for(uint32_t i = 0; c[i] != '\0'; i++) {
+        c[i] = read_serial();
+    }
+    write_serial('\0');
+}
