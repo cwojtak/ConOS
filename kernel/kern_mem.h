@@ -5,12 +5,10 @@
 #include "../libc/string.h"
 
 struct MemoryManagerEntry {
-    uintptr_t baseAddress;
     uint32_t type; //0 = AVAIL, 1 = RESRV
+    struct MemoryManagerEntry* lastContig;
+    struct MemoryManagerEntry* firstContig;
     uint32_t reserved;
-    uint32_t reserved2;
-    uint32_t reserved3;
-    uint32_t reserved4;
 };
 
 struct MemoryManager
@@ -20,6 +18,7 @@ struct MemoryManager
 	int _blockSizeInWords;
 	int (*_allocator)(int, uintptr_t);
     struct MemoryManagerEntry* _mmList;
+    struct MemoryManagerEntry* _mmListEnd;
     uintptr_t _mmStart;
     int _mmLength;
     int _mmNumEntries;

@@ -9,6 +9,7 @@ void create_memory_manager(unsigned wordSize, int (*allocator)(int, uintptr_t), 
 	theMemoryManager->_allocator = allocator;
 	theMemoryManager->_memStart = (uintptr_t)NULL;
 	theMemoryManager->_mmList = NULL;
+	theMemoryManager->_mmListEnd = NULL;
 	theMemoryManager->_mmLength = objectLength;
 	theMemoryManager->_wordSize = wordSize;
 }
@@ -28,7 +29,7 @@ void mm_initialize(size_t sizeInWords, uintptr_t location)
 
     theMemoryManager->_memStart = location;
     theMemoryManager->_blockSizeInWords = sizeInWords;
-    theMemoryManager->_mmList = (struct MemoryManagerEntry*)(0x90000 + sizeof(*theMemoryManager));
+    theMemoryManager->_mmList = (struct MemoryManagerEntry*)(theMemoryManager->_mmStart + sizeof(*theMemoryManager));
 
     theMemoryManager->_mmNumEntries = (theMemoryManager->_mmLength - sizeof(*theMemoryManager)) / sizeof(theMemoryManager->_mmList[0]);
 
@@ -36,20 +37,23 @@ void mm_initialize(size_t sizeInWords, uintptr_t location)
 	if(theMemoryManager->_mmBlockLength == 0) theMemoryManager->_mmBlockLength = 1;
 
 	struct MemoryManagerEntry* current_ent = theMemoryManager->_mmList;
-	uintptr_t currentLocation = location;
-
 	for(int i = 0; i < theMemoryManager->_mmNumEntries; i++)
 	{
-		current_ent->baseAddress = currentLocation;
 		current_ent->type = 0;
+		current_ent->firstContig = theMemoryManager->_mmList;
 		current_ent->reserved = 0;
-		current_ent->reserved2 = 0;
-		current_ent->reserved3 = 0;
-		current_ent->reserved4 = 0;
 
 		current_ent++;
-		currentLocation += theMemoryManager->_mmBlockLength;
-		if(currentLocation > sizeInWords * theMemoryManager->_wordSize) break;
+	}
+
+	current_ent--;
+	theMemoryManager->_mmListEnd = current_ent;
+
+	current_ent = theMemoryManager->_mmList;
+	for(int i = 0; i < theMemoryManager->_mmNumEntries; i++)
+	{
+		current_ent->lastContig = theMemoryManager->_mmListEnd;
+		current_ent++;
 	}
 }
 
@@ -62,6 +66,7 @@ void mm_shutdown()
     theMemoryManager->_mmLength = 0;
     theMemoryManager->_mmNumEntries = 0;
     theMemoryManager->_mmBlockLength = 0;
+	theMemoryManager->_mmListEnd = NULL;
 }
 
 void mm_reserveat(size_t sizeInBytes, uintptr_t location)
@@ -77,8 +82,23 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 	if(theMemoryManager->_mmBlockLength > sizeInBytes)
 	{
 		start_ent->type = 1;
+		struct MemoryManagerEntry* current_ent = start_ent->firstContig;
+		while(current_ent != start_ent)
+		{
+			current_ent->lastContig = start_ent - 1;
+			current_ent++;
+		}
+		while(current_ent != theMemoryManager->_mmListEnd)
+		{
+			current_ent->firstContig = start_ent + 1;
+			current_ent++;
+		}
+		start_ent->firstContig = start_ent;
+		start_ent->lastContig = start_ent;
 		return;
 	}
+
+	struct MemoryManagerEntry* begin = start_ent;
 
 	//Keep reserving blocks until the requested amount is reserved
 	size_t remainingBytes = sizeInBytes - theMemoryManager->_mmBlockLength;
@@ -87,10 +107,34 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 		start_ent->type = 1;
 		start_ent++;
 		remainingBytes -= theMemoryManager->_mmBlockLength;
+		if(start_ent == theMemoryManager->_mmListEnd)
+		{
+			start_ent->type = 1;
+			break;
+		}
 	}
 
-	start_ent++;
 	start_ent->type = 1;
+
+	struct MemoryManagerEntry* end = start_ent;
+
+	struct MemoryManagerEntry* current_ent = start_ent->firstContig;
+	while(current_ent != begin)
+	{
+		current_ent->lastContig = begin - 1;
+		current_ent++;
+	}
+	while(current_ent != end + 1)
+	{
+		current_ent->firstContig = begin;
+		current_ent->lastContig = end;
+		current_ent++;
+	}
+	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
+	{
+		current_ent->firstContig = start_ent + 1;
+		current_ent++;
+	}
 }
 
 void mm_logblock(int blocknum)
@@ -109,7 +153,7 @@ void mm_logblock(int blocknum)
 	char tempStr[16] = "";
 	char tempStr2[16] = "";
 	char tempStr3[16] = "";
-	hex_to_ascii(current_ent->baseAddress, tempStr);
+	hex_to_ascii(theMemoryManager->_mmBlockLength * blocknum + theMemoryManager->_memStart, tempStr);
 	int_to_ascii(blocknum, tempStr2);
 	hex_to_ascii(theMemoryManager->_mmBlockLength, tempStr3);
 
@@ -126,15 +170,19 @@ void mm_logblock(int blocknum)
 
 void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
 {
-    uintptr_t memoryStart = (uintptr_t)0x100000;
+    uintptr_t memoryStart = (uintptr_t)NULL;
     uintptr_t memoryEnd = (uintptr_t)NULL;
 
 	uintptr_t mmStart = (uintptr_t)NULL;
 	uintptr_t mmEnd = (uintptr_t)NULL;
 
+	uintptr_t largestMemoryBlock = (uintptr_t)NULL;
+	uint64_t sizeOfLargestMemoryBlock = 0;
+
 	struct MemoryMapEntry* currentEntry = mmap;
 	log(1, "Physical Memory Map");
-	for(uint32_t i = 0; i < mmap_size; i++) {
+	for(uint32_t i = 0; i < mmap_size; i++)
+	{
 		char output[100] = "";
 		char tempStr[10] = "";
 		char tempStr2[10] = "";
@@ -170,18 +218,26 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
 		appendstr(output, ")");
 		log(1, output);
 
-        if(i == mmap_size - 1) {
+        if(i == mmap_size - 1)
+		{
             memoryEnd = (uintptr_t)(currentEntry->baseAddress - 1 + currentEntry->length);
         }
 
-        if(mmStart == (uintptr_t)NULL && mmEnd == (uintptr_t)NULL && currentEntry->type == 1 && currentEntry->baseAddress + currentEntry->length > 0x90000 && currentEntry->baseAddress <= 0x90000 && currentEntry->length > 0x500)
+        if(currentEntry->length > sizeOfLargestMemoryBlock && currentEntry->type == 1)
 		{
-			mmStart = 0x90000;
-			mmEnd = currentEntry->baseAddress + currentEntry->length;
-			if(mmEnd > 0x100000) mmEnd = 0x100000;
+			sizeOfLargestMemoryBlock = currentEntry->length;
+			largestMemoryBlock = (uintptr_t)currentEntry->baseAddress;
 		}
 
 		currentEntry++;
+	}
+
+	if(largestMemoryBlock != (uintptr_t)NULL)
+	{
+		mmStart = largestMemoryBlock;
+		struct MemoryManagerEntry test;
+		mmEnd = (uintptr_t)sizeOfLargestMemoryBlock / (sizeof(test) + 64) * sizeof(test) - 1;
+		memoryStart = mmEnd + 1;
 	}
 
 	if(mmStart == (uintptr_t)NULL || mmEnd == (uintptr_t)NULL)
