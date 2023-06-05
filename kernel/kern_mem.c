@@ -156,14 +156,7 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 		return (uintptr_t)NULL;
 	}
 
-	char t[16] = "";
-	hex_to_ascii(start_ent, t);
-	log(0, t);
-	char t2[16] = "";
-	hex_to_ascii(theMemoryManager->_mmList, t2);
-	log(0, t2);
-
-	uintptr_t retAddress = (uintptr_t)(start_ent - theMemoryManager->_mmList) / sizeof(*start_ent) * theMemoryManager->_mmBlockLength + theMemoryManager->_memStart;
+	uintptr_t retAddress = (uintptr_t)((void*)start_ent - (void*)theMemoryManager->_mmList) / sizeof(*start_ent) * theMemoryManager->_mmBlockLength + theMemoryManager->_memStart;
 
 	if(theMemoryManager->_mmBlockLength > sizeInBytes)
 	{
@@ -405,7 +398,7 @@ struct MemoryManagerEntry* bestFit(size_t sizeInBytes, struct MemoryManagerEntry
 			continue;
 		}
 
-		size_t holeSize = (uintptr_t)(current_ent->lastContig - current_ent->firstContig) / sizeof(*current_ent) * theMemoryManager->_mmBlockLength;
+		size_t holeSize = (uintptr_t)((void*)current_ent->lastContig - (void*)current_ent->firstContig) / sizeof(*current_ent) * theMemoryManager->_mmBlockLength;
 		if(holeSize > sizeInBytes)
 		{
 			if (holeSize < smallestLargeEnoughHoleSize || smallestLargeEnoughHoleSize == 0)

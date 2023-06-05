@@ -80,6 +80,7 @@ void user_input(char *input)
 			kprint("PAGE - Allocate 1000 bytes in memory\n");
 			kprint("COM_TEST - Test COM1\n");
 			kprint("LOG_BLOCK - Log a memory block\n");
+			kprint("ALLOC_MEM - Allocate some memory\n");
 			kprint("> ");
 		}
 		else if (strcmp(input, "PAGE") == 0)
