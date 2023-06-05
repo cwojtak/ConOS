@@ -4,7 +4,7 @@ KERNEL_OFFSET equ 0x1000
 
 [bits 16]
 mov [BOOT_DRIVE], dl
-mov bp, 0x9000
+mov bp, 0x9c00
 mov sp, bp
 
 mov bx, STAGE2_OFFSET
@@ -24,7 +24,7 @@ call disk_load
 call load_gdt
 call get_memory_map
 call get_memory_size_legacy
-mov [0x9000], ax
+mov [0x9c00], ax
 call enable_a20
 
 call pm_switch
@@ -44,8 +44,8 @@ PM:
 
 	mov eax, 0x2BADB002
 	mov ebx, 0
-	mov word [boot_info+multiboot_info.mmap_addr], 0x9008
-	mov word dx, [0x9004]
+	mov word [boot_info+multiboot_info.mmap_addr], 0x9c08
+	mov word dx, [0x9c04]
 	mov word [boot_info+multiboot_info.mmap_length], dx
 
 	push dword boot_info

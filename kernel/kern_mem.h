@@ -16,7 +16,7 @@ struct MemoryManager
 	uintptr_t _memStart;
 	unsigned _wordSize;
 	int _blockSizeInWords;
-	int (*_allocator)(int, uintptr_t);
+	struct MemoryManagerEntry* (*_allocator)(size_t, struct MemoryManagerEntry*);
     struct MemoryManagerEntry* _mmList;
     struct MemoryManagerEntry* _mmListEnd;
     uintptr_t _mmStart;
@@ -25,22 +25,24 @@ struct MemoryManager
     int _mmBlockLength;
 };
 
-void create_memory_manager(unsigned wordSize, int (*allocator)(int, uintptr_t), uintptr_t mmStart, size_t objectLength);
+void create_memory_manager(unsigned wordSize, struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*), uintptr_t mmStart, size_t objectLength);
 void destroy_memory_manager();
 
 void mm_initialize(size_t sizeInWords, uintptr_t location);
 void mm_shutdown();
 void mm_reserveat(size_t sizeInBytes, uintptr_t location);
+uintptr_t mm_allocate(size_t sizeInBytes);
+
+void mm_setAllocator(struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*));
+struct MemoryManagerEntry* mm_getList();
+unsigned mm_getWordSize();
+uintptr_t mm_getMemoryStart();
+unsigned mm_getMemoryLimit();
 
 void mm_logblock(int blocknum);
+
 /*
-void* mm_allocate(size_t sizeInBytes);
 void mm_free(void* address);
-void mm_setAllocator(std::function<int(int, void*)> allocator);
-void* mm_getList();
-unsigned mm_getWordSize();
-void* mm_getMemoryStart();
-unsigned mm_getMemoryLimit();
 */
 
 struct MemoryMapEntry {
@@ -52,7 +54,6 @@ struct MemoryMapEntry {
 
 void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size);
 
-int bestFit(int sizeInWords, uintptr_t list);
-int worstFit(int sizeInWords, uintptr_t list);
+struct MemoryManagerEntry* bestFit(size_t sizeInBytes, struct MemoryManagerEntry* list);
 
 #endif

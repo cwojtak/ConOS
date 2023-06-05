@@ -7,6 +7,7 @@ void setEntryPoint(){
 static int shell_context = 0;
 //0 = standard
 //1 = LOG_BLOCK
+//2 = ALLOC_MEM
 
 void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	clear_screen();
@@ -40,6 +41,27 @@ void user_input(char *input)
 	if(shell_context == 1)
 	{
 		mm_logblock(atoi(input));
+		shell_context = 0;
+		kprint("> ");
+	}
+	else if(shell_context == 2)
+	{
+		uintptr_t allocation = mm_allocate(atoi(input));
+
+		if(allocation != (uintptr_t)NULL)
+		{
+			char output[100] = "";
+			char tempStr[32] = "";
+			hex_to_ascii(allocation, tempStr);
+			strcat("Memory successfully allocated at physical address ", tempStr, output);
+			appendstr(output, ".");
+			log(1, output);
+		}
+		else
+		{
+			log(3, "Memory allocation failed.");
+		}
+
 		shell_context = 0;
 		kprint("> ");
 	}
@@ -87,6 +109,11 @@ void user_input(char *input)
 		{
 			shell_context = 1;
 			kprint("Enter a block number: ");
+		}
+		else if (strcmp(input, "ALLOC_MEM") == 0)
+		{
+			shell_context = 2;
+			kprint("Enter the size in bytes (base 10) to allocate (enter 0 to cancel): ");
 		}
 		else
 		{

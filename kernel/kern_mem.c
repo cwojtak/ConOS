@@ -2,7 +2,7 @@
 
 struct MemoryManager* theMemoryManager;
 
-void create_memory_manager(unsigned wordSize, int (*allocator)(int, uintptr_t), uintptr_t mmStart, size_t objectLength)
+void create_memory_manager(unsigned wordSize, struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*), uintptr_t mmStart, size_t objectLength)
 {
     theMemoryManager = (struct MemoryManager*)mmStart;
 	theMemoryManager->_mmStart = mmStart;
@@ -137,8 +137,127 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 	}
 }
 
+uintptr_t mm_allocate(size_t sizeInBytes)
+{
+	//Ensure the sizeInBytes is valid
+	if (sizeInBytes < 0) return (uintptr_t)NULL;
+
+	int sizeInBlocks = sizeInBytes / theMemoryManager->_mmBlockLength;
+	struct MemoryManagerEntry* start_ent = theMemoryManager->_allocator(sizeInBytes, theMemoryManager->_mmList);
+
+	if (start_ent == NULL)
+	{
+		char output[100] = "";
+		char tempStr[16] = "";
+		hex_to_ascii(sizeInBytes, tempStr);
+		strcat("Unable to allocate a request for ", tempStr, output);
+		appendstr(output, " bytes.");
+		log(3, output);
+		return (uintptr_t)NULL;
+	}
+
+	char t[16] = "";
+	hex_to_ascii(start_ent, t);
+	log(0, t);
+	char t2[16] = "";
+	hex_to_ascii(theMemoryManager->_mmList, t2);
+	log(0, t2);
+
+	uintptr_t retAddress = (uintptr_t)(start_ent - theMemoryManager->_mmList) / sizeof(*start_ent) * theMemoryManager->_mmBlockLength + theMemoryManager->_memStart;
+
+	if(theMemoryManager->_mmBlockLength > sizeInBytes)
+	{
+		start_ent->type = 1;
+		struct MemoryManagerEntry* current_ent = start_ent->firstContig;
+		while(current_ent != start_ent)
+		{
+			current_ent->lastContig = start_ent - 1;
+			current_ent++;
+		}
+		while(current_ent != theMemoryManager->_mmListEnd)
+		{
+			current_ent->firstContig = start_ent + 1;
+			current_ent++;
+		}
+		start_ent->firstContig = start_ent;
+		start_ent->lastContig = start_ent;
+		return retAddress;
+	}
+
+	struct MemoryManagerEntry* begin = start_ent;
+
+	//Keep reserving blocks until the requested amount is reserved
+	size_t remainingBytes = sizeInBytes - theMemoryManager->_mmBlockLength;
+	while(remainingBytes > theMemoryManager->_mmBlockLength)
+	{
+		start_ent->type = 1;
+		start_ent++;
+		remainingBytes -= theMemoryManager->_mmBlockLength;
+		if(start_ent == theMemoryManager->_mmListEnd)
+		{
+			start_ent->type = 1;
+			break;
+		}
+	}
+
+	start_ent->type = 1;
+
+	struct MemoryManagerEntry* end = start_ent;
+
+	struct MemoryManagerEntry* current_ent = start_ent->firstContig;
+	while(current_ent != begin)
+	{
+		current_ent->lastContig = begin - 1;
+		current_ent++;
+	}
+	while(current_ent != end + 1)
+	{
+		current_ent->firstContig = begin;
+		current_ent->lastContig = end;
+		current_ent++;
+	}
+	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
+	{
+		current_ent->firstContig = start_ent + 1;
+		current_ent++;
+	}
+
+	return retAddress;
+}
+
+void mm_setAllocator(struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*))
+{
+	theMemoryManager->_allocator = allocator;
+}
+
+struct MemoryManagerEntry* mm_getList()
+{
+	return theMemoryManager->_mmList;
+}
+
+unsigned mm_getWordSize()
+{
+	return theMemoryManager->_wordSize;
+}
+
+uintptr_t mm_getMemoryStart()
+{
+	return theMemoryManager->_memStart;
+}
+
+uintptr_t mm_getMemoryLimit()
+{
+	return theMemoryManager->_memStart + (uintptr_t)theMemoryManager->_wordSize;
+}
+
 void mm_logblock(int blocknum)
 {
+	if(blocknum < 0 || blocknum > theMemoryManager->_mmNumEntries)
+	{
+		log(3, "Attempted to retrieve information on a non-existent memory block. Ignoring...");
+		return;
+	}
+
 	if (theMemoryManager->_memStart == (uintptr_t)NULL)
     {
         log(4, "Attempted to log a memory block before initializing the memory manager. Ignoring...");
@@ -178,7 +297,6 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
 
 	uintptr_t largestMemoryBlock = (uintptr_t)NULL;
 	uint64_t sizeOfLargestMemoryBlock = 0;
-
 	struct MemoryMapEntry* currentEntry = mmap;
 	log(1, "Physical Memory Map");
 	for(uint32_t i = 0; i < mmap_size; i++)
@@ -223,7 +341,7 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
             memoryEnd = (uintptr_t)(currentEntry->baseAddress - 1 + currentEntry->length);
         }
 
-        if(currentEntry->length > sizeOfLargestMemoryBlock && currentEntry->type == 1)
+        if(currentEntry->length > sizeOfLargestMemoryBlock && currentEntry->type == 1 && currentEntry->baseAddress >= 0x90000)
 		{
 			sizeOfLargestMemoryBlock = currentEntry->length;
 			largestMemoryBlock = (uintptr_t)currentEntry->baseAddress;
@@ -269,41 +387,36 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
     }
 }
 
-//Memory allocation methods
-int bestFit(int sizeInWords, uintptr_t list)
+//Memory allocation method
+struct MemoryManagerEntry* bestFit(size_t sizeInBytes, struct MemoryManagerEntry* list)
 {
-	uint16_t* holes = (uint16_t*)list;
-	int16_t smallestLargeEnoughHole = -1;
-	int16_t smallestLargeEnoughHoleSize = -1;
-	for (int i = 1; i < holes[0] * 2 + 1; i += 2)
-	{
-		if (holes[i + 1] >= sizeInWords)
-		{
-			if (holes[i + 1] < smallestLargeEnoughHoleSize || smallestLargeEnoughHoleSize == -1)
-			{
-				smallestLargeEnoughHole = holes[i];
-				smallestLargeEnoughHoleSize = holes[i + 1];
-			}
-		}
-	}
-	return smallestLargeEnoughHole;
-}
+	size_t sizeInBlocks = sizeInBytes / theMemoryManager->_mmBlockLength;
 
-int worstFit(int sizeInWords, uintptr_t list)
-{
-	uint16_t* holes = (uint16_t*)list;
-	int16_t largestPossibleHole = -1;
-	int16_t largestPossibleHoleSize = -1;
-	for (int i = 1; i < holes[0] * 2 + 1; i += 2)
+	struct MemoryManagerEntry* smallestLargeEnoughHole = NULL;
+	size_t smallestLargeEnoughHoleSize = 0;
+
+	struct MemoryManagerEntry* current_ent = theMemoryManager->_mmList;
+
+	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
 	{
-		if (holes[i + 1] >= sizeInWords)
+		if (current_ent->type != 0)
 		{
-			if (holes[i + 1] > largestPossibleHole || largestPossibleHoleSize == -1)
+			current_ent = current_ent->lastContig + 1;
+			continue;
+		}
+
+		size_t holeSize = (uintptr_t)(current_ent->lastContig - current_ent->firstContig) / sizeof(*current_ent) * theMemoryManager->_mmBlockLength;
+		if(holeSize > sizeInBytes)
+		{
+			if (holeSize < smallestLargeEnoughHoleSize || smallestLargeEnoughHoleSize == 0)
 			{
-				largestPossibleHole = holes[i];
-				largestPossibleHoleSize = holes[i + 1];
+				smallestLargeEnoughHoleSize = holeSize;
+				smallestLargeEnoughHole = current_ent;
 			}
 		}
+
+		current_ent = current_ent->lastContig + 1;
 	}
-	return largestPossibleHole;
+
+	return smallestLargeEnoughHole;
 }
