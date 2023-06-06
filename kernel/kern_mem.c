@@ -218,6 +218,74 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 	return retAddress;
 }
 
+int mm_free(uintptr_t address)
+{
+	struct MemoryManagerEntry* start_ent = theMemoryManager->_mmList;
+	start_ent += (address - theMemoryManager->_memStart) / theMemoryManager->_mmBlockLength;
+
+	if(address < theMemoryManager->_memStart || address > theMemoryManager->_memStart + theMemoryManager->_mmNumEntries * theMemoryManager->_mmBlockLength || start_ent->firstContig != start_ent)
+	{
+		log(3, "Attempted to free memory at an invalid address. Ignoring...");
+		return -1;
+	}
+	if(start_ent->type == 0)
+	{
+		log(3, "Attempted to free memory that has already been freed. Ignoring...");
+		return -1;
+	}
+
+	struct MemoryManagerEntry* current_ent = start_ent;
+	while(current_ent != start_ent->lastContig + 1)
+	{
+		current_ent->type = 0;
+		current_ent++;
+	}
+
+	struct MemoryManagerEntry* leftContig = start_ent->firstContig;
+	struct MemoryManagerEntry* rightContig = start_ent->lastContig;
+	if(start_ent != theMemoryManager->_mmList && (start_ent - 1)->type == 0) leftContig = (start_ent - 1)->firstContig;
+	if(current_ent != theMemoryManager->_mmListEnd + 1 && (current_ent + 1)->type == 0) rightContig = (current_ent + 1)->lastContig;
+
+	struct MemoryManagerEntry* pastEndOfOriginalAlloc = start_ent->lastContig + 1;
+
+	if(leftContig != start_ent->firstContig)
+	{
+		current_ent = leftContig;
+		while(current_ent != start_ent)
+		{
+			current_ent->lastContig = rightContig;
+			current_ent++;
+		}
+	}
+	if(rightContig != start_ent->lastContig)
+	{
+		current_ent = pastEndOfOriginalAlloc;
+		while(current_ent != pastEndOfOriginalAlloc->lastContig)
+		{
+			current_ent->firstContig = leftContig;
+			current_ent++;
+		}
+		current_ent->firstContig = leftContig;
+	}
+	if(leftContig != start_ent->firstContig || rightContig != start_ent->lastContig)
+	{
+		current_ent = start_ent;
+		while(current_ent != pastEndOfOriginalAlloc)
+		{
+			if(leftContig != start_ent->firstContig)
+			{
+				current_ent->firstContig = leftContig;
+			}
+			if(rightContig != start_ent->lastContig)
+			{
+				current_ent->lastContig = rightContig;
+			}
+			current_ent++;
+		}
+	}
+	return 0;
+}
+
 void mm_setAllocator(struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*))
 {
 	theMemoryManager->_allocator = allocator;

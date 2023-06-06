@@ -32,7 +32,7 @@ void mm_initialize(size_t sizeInWords, uintptr_t location);
 void mm_shutdown();
 void mm_reserveat(size_t sizeInBytes, uintptr_t location);
 uintptr_t mm_allocate(size_t sizeInBytes);
-
+int mm_free(uintptr_t address);
 void mm_setAllocator(struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*));
 struct MemoryManagerEntry* mm_getList();
 unsigned mm_getWordSize();
@@ -40,10 +40,6 @@ uintptr_t mm_getMemoryStart();
 unsigned mm_getMemoryLimit();
 
 void mm_logblock(int blocknum);
-
-/*
-void mm_free(void* address);
-*/
 
 struct MemoryMapEntry {
     uint64_t baseAddress;

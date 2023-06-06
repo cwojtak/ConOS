@@ -8,6 +8,7 @@ static int shell_context = 0;
 //0 = standard
 //1 = LOG_BLOCK
 //2 = ALLOC_MEM
+//3 = FREE_MEM
 
 void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	clear_screen();
@@ -65,6 +66,26 @@ void user_input(char *input)
 		shell_context = 0;
 		kprint("> ");
 	}
+	else if(shell_context == 3)
+	{
+		int i = atoi(input);
+		int error = mm_free(i);
+		if(error == -1)
+		{
+			log(3, "Memory free failed.");
+		}
+		else
+		{
+			char output[100] = "";
+			char tempStr[32] = "";
+			hex_to_ascii(i, tempStr);
+			strcat("Memory successfully freed at physical address ", tempStr, output);
+			appendstr(output, ".");
+			log(1, output);
+		}
+		shell_context = 0;
+		kprint("> ");
+	}
 	else
 	{
 		if (strcmp(input, "END") == 0)
@@ -81,6 +102,7 @@ void user_input(char *input)
 			kprint("COM_TEST - Test COM1\n");
 			kprint("LOG_BLOCK - Log a memory block\n");
 			kprint("ALLOC_MEM - Allocate some memory\n");
+			kprint("FREE_MEM - Free some memory\n");
 			kprint("> ");
 		}
 		else if (strcmp(input, "PAGE") == 0)
@@ -115,6 +137,11 @@ void user_input(char *input)
 		{
 			shell_context = 2;
 			kprint("Enter the size in bytes (base 10) to allocate (enter 0 to cancel): ");
+		}
+		else if (strcmp(input, "FREE_MEM") == 0)
+		{
+			shell_context = 3;
+			kprint("Enter the address (base 10) to free (enter 0 to cancel): ");
 		}
 		else
 		{
