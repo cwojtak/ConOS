@@ -180,7 +180,8 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 	struct MemoryManagerEntry* begin = start_ent;
 
 	//Keep reserving blocks until the requested amount is reserved
-	size_t remainingBytes = sizeInBytes - theMemoryManager->_mmBlockLength;
+	size_t remainingBytes = sizeInBytes;
+
 	while(remainingBytes > theMemoryManager->_mmBlockLength)
 	{
 		start_ent->type = 1;
@@ -428,6 +429,13 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
 	create_memory_manager(1, &bestFit, mmStart, mmEnd - mmStart);
 	mm_initialize((size_t)(memoryEnd-memoryStart), memoryStart);
 
+	char output[100] = "";
+	char memStartString[16] = "";
+	hex_to_ascii( theMemoryManager->_memStart, memStartString);
+	strcat("Initializing memory space starting at ", memStartString, output);
+	appendstr(output, ".");
+	log(1, output);
+
     currentEntry = mmap;
     for(uint32_t i = 0; i < mmap_size; i++) {
         if(currentEntry->type == 1 || currentEntry->baseAddress + currentEntry->length <= memoryStart)
@@ -466,8 +474,8 @@ struct MemoryManagerEntry* bestFit(size_t sizeInBytes, struct MemoryManagerEntry
 			continue;
 		}
 
-		size_t holeSize = (uintptr_t)((void*)current_ent->lastContig - (void*)current_ent->firstContig) / sizeof(*current_ent) * theMemoryManager->_mmBlockLength;
-		if(holeSize > sizeInBytes)
+		size_t holeSize = (uintptr_t)((void*)current_ent->lastContig - (void*)current_ent->firstContig + (void*)sizeof(*current_ent)) / sizeof(*current_ent) * theMemoryManager->_mmBlockLength;
+		if(holeSize >= sizeInBytes)
 		{
 			if (holeSize < smallestLargeEnoughHoleSize || smallestLargeEnoughHoleSize == 0)
 			{
