@@ -10,6 +10,7 @@ KERNEL_SEG equ 0x100
 [bits 16]
 
 jmp main
+nop
 
 ; BIOS Parameter Block
 
@@ -19,9 +20,9 @@ bpbSectorsPerCluster:   db 1
 bpbReservedSectors:     dw 3
 bpbNumberOfFATs:        db 1
 bpbRootEntries:         dw 224
-bpbTotalSectors:        dw 2880
+bpbTotalSectors:        dw 4086
 bpbMedia:               db 0xf0
-bpbSectorsPerFAT:       dw 9
+bpbSectorsPerFAT:       dw 0x0c ; could be 0x09?
 bpbSectorsPerTrack:     dw 18
 bpbHeadsPerCylinder:    dw 2
 bpbHiddenSectors:       dd 0
@@ -62,7 +63,7 @@ main:
 
     call stage2
 
-    ;call stage3
+    call stage3
 
     call pm_switch
     
@@ -81,10 +82,11 @@ PM:
 	mov word [boot_info+multiboot_info.mmap_length], dx
 
 	push dword boot_info
-	call KERNEL_OFFSET
+	;call KERNEL_OFFSET
 	jmp $
 
 MSG_PROT_MODE db "Successfully switched to 32-bit mode!"
+dd 0x0
 
 %include "boot/stage1_disk.asm"
 %include "boot/stage1_32bit.asm"
@@ -125,13 +127,13 @@ KERN_IMAGE_SIZE dw 0x0
 stage3:
     call load_root
 
-    mov ebx, 0
-    mov ebp, KERNEL_SEG
-    mov esi, KERN_IMAGE_NAME
-    call load_kernel
-    mov dword [KERN_IMAGE_SIZE], ecx
-    cmp ax, 0
-    jne stage3_error
+    ;mov ebx, 0
+    ;mov ebp, KERNEL_SEG
+    ;mov esi, KERN_IMAGE_NAME
+    ;call load_kernel
+    ;mov dword [KERN_IMAGE_SIZE], ecx
+    ;cmp ax, 0
+    ;jne stage3_error
     ret
 stage3_error:
     cli
@@ -178,7 +180,7 @@ read_disk_lba_success:
     pop ax
     add bx, WORD [bpbBytesPerSector]
     inc ax
-    loop read_disk_lba
+    ;loop read_disk_lba
     ret
     
 load_root:

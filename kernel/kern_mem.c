@@ -307,9 +307,9 @@ uintptr_t mm_getMemoryStart()
 	return theMemoryManager->_memStart;
 }
 
-uintptr_t mm_getMemoryLimit()
+unsigned mm_getMemoryLimit()
 {
-	return theMemoryManager->_memStart + (uintptr_t)theMemoryManager->_wordSize;
+	return (unsigned)theMemoryManager->_memStart + (unsigned)theMemoryManager->_wordSize;
 }
 
 void mm_logblock(int blocknum)
