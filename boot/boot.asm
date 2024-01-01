@@ -180,7 +180,7 @@ read_disk_lba_success:
     pop ax
     add bx, WORD [bpbBytesPerSector]
     inc ax
-    ;loop read_disk_lba
+    loop read_disk_lba
     ret
     
 load_root:
