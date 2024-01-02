@@ -1,4 +1,10 @@
 [bits 16]
+stage2_mem:
+    call get_memory_size_legacy
+    mov [0x500], ax
+    call enable_a20
+    ret
+
 get_memory_size_legacy:
     int 0x12
     jc .error
