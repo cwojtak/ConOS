@@ -36,7 +36,7 @@ run: os-image.bin
 	qemu-system-x86_64 -serial file:serial.log -hda $<
 
 debug: os-image.bin kernel.elf
-	qemu-system-x86_64 -S -s -fda os-image.bin
+	qemu-system-x86_64 -S -s -serial file:serial.log -hda os-image.bin
 
 %.o: %.c ${HEADERS}
 	${CC} ${CFLAGS} -fno-PIC -m32 -ffreestanding -c $< -o $@

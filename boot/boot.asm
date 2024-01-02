@@ -4,7 +4,6 @@
 STAGE2_OFFSET equ 0x7e00
 STAGE3_OFFSET equ 0x8100
 KERNEL_OFFSET equ 0x1000
-KERNEL_SEG equ 0x100
 
 ; Entry
 [bits 16]
@@ -50,15 +49,6 @@ main:
 
     call disk_load
 
-    ; Load the kernel into memory at 0x1000
-
-    mov bx, KERNEL_OFFSET
-    mov dh, 54
-    mov cl, 4
-    mov dl, [BOOT_DRIVE]
-
-    call disk_load
-
     call load_gdt
 
     call stage2
@@ -66,7 +56,7 @@ main:
     call stage3
 
     call pm_switch
-    
+
     cli
     hlt
 
@@ -100,6 +90,10 @@ dw 0xaa55
 ; END STAGE 1
 ; BEGIN STAGE 2
 
+stage2:
+    call stage2_mem
+    ret
+
 %include "boot/stage2_multiboot.asm"
 %include "boot/stage2_mem.asm"
 
@@ -109,8 +103,18 @@ times 1024-($-$$) db 0
 ; BEGIN STAGE 3
 
 FAT_SEG equ 0x830
-ROOT_DIRECTORY_SEG equ 0x850
-ROOT_DIRECTORY_OFFSET equ 0x8500
+FAT_OFFSET equ 0x8300
+ROOT_DIRECTORY_SEG equ 0x100
+ROOT_DIRECTORY_OFFSET equ 0x1000
+
+DATA_PACKET:
+            db 0x10
+            db 0x0
+blockcount: dw 0x1
+db_add:     dw 0x0
+            dw 0x0
+d_lba:      dd 0x1
+            dd 0x0
 
 datasector  dw 0x0000
 cluster     dw 0x0000
@@ -119,7 +123,7 @@ absoluteSector db 0x00
 absoluteHead   db 0x00
 absoluteTrack  db 0x00
 
-KERN_IMAGE_NAME db "kernel  bin"
+KERN_IMAGE_NAME db "KERNEL  BIN"
 KERN_IMAGE_SIZE dw 0x0
 
 [bits 16]
@@ -127,13 +131,13 @@ KERN_IMAGE_SIZE dw 0x0
 stage3:
     call load_root
 
-    ;mov ebx, 0
-    ;mov ebp, KERNEL_SEG
-    ;mov esi, KERN_IMAGE_NAME
-    ;call load_kernel
-    ;mov dword [KERN_IMAGE_SIZE], ecx
-    ;cmp ax, 0
-    ;jne stage3_error
+    mov ebx, 0
+    mov ebp, KERNEL_OFFSET
+    mov esi, KERN_IMAGE_NAME
+    call load_kernel
+    mov dword [KERN_IMAGE_SIZE], ecx
+    cmp ax, 0
+    jne stage3_error
     ret
 stage3_error:
     cli
@@ -150,37 +154,21 @@ read_disk_lba:
     push bx
     push cx
 
-    xor dx, dx
-    div WORD [bpbSectorsPerTrack]
-    inc dl
-    mov BYTE [absoluteSector], dl
-    xor dx, dx
-    div WORD [bpbHeadsPerCylinder]
-    mov BYTE [absoluteHead], dl
-    mov BYTE [absoluteTrack], al
-    mov ah, 0x02
-    mov al, 0x01
-    mov ch, BYTE [absoluteTrack]
-    mov cl, BYTE [absoluteSector]
-    mov dh, BYTE [absoluteHead]
-    mov dl, BYTE [BOOT_DRIVE]
+    mov si, DATA_PACKET
+    mov ah, 0x42
+    mov dl, [BOOT_DRIVE]
     int 0x13
 
     jnc read_disk_lba_success
-    xor ax, ax
-    int 0x13
-    dec di
     pop cx
     pop bx
     pop ax
-    int 0x18
+    ;int 0x18
+    ret
 read_disk_lba_success:
     pop cx
     pop bx
     pop ax
-    add bx, WORD [bpbBytesPerSector]
-    inc ax
-    loop read_disk_lba
     ret
     
 load_root:
@@ -195,6 +183,9 @@ load_root:
     mov al, byte [bpbNumberOfFATs]
     mul word [bpbSectorsPerFAT]
     add ax, word [bpbReservedSectors]
+    mov word [blockcount], cx
+    mov word [db_add], ROOT_DIRECTORY_OFFSET
+    mov word [d_lba], ax
     mov word [datasector], ax
     add word [datasector], cx
 
@@ -210,9 +201,10 @@ load_fat:
     mov al, BYTE [bpbNumberOfFATs]
     mul word [bpbSectorsPerFAT]
     mov cx, ax
-    push word FAT_SEG
-    pop es
-    xor bx, bx
+    mov word [blockcount], cx
+    mov word [db_add], FAT_OFFSET
+    mov ax, word [bpbReservedSectors]
+    mov word [d_lba], ax
     call read_disk_lba
     pop es
     popa
@@ -270,7 +262,7 @@ load_kernel_find:
 load_kernel_fat:
     sub edi, ROOT_DIRECTORY_OFFSET
     sub eax, ROOT_DIRECTORY_OFFSET
-    
+     
     push word ROOT_DIRECTORY_SEG
     pop es
     mov dx, word [es:di + 0x001A]
@@ -281,7 +273,6 @@ load_kernel_fat:
     push es
     
     call load_fat
-
 load_kernel_image:
     mov ax, WORD [cluster]
     pop es
@@ -289,13 +280,28 @@ load_kernel_image:
 
     call cluster_lba
 
-    xor cx, cx
-    mov cl, BYTE [bpbSectorsPerCluster]
+    xor ax, ax
+    mov al, [bpbSectorsPerCluster]
+    mov word [blockcount], ax
+    mov word [db_add], bx
+    mov [d_lba], cx
     
     call read_disk_lba
-    
+
+    push dx
+    mov dx, bx
+    call print_hex
+    pop dx
+
+    xor cx, cx
+    mov cx, word [bpbBytesPerSector]
+    mul cx
+    add bx, ax
+
     pop ecx
     inc ecx
+    cmp ecx, 54
+    jge load_kernel_done
     push ecx
     
     push bx
@@ -330,6 +336,77 @@ load_kernel_done:
     pop bx
     pop ecx
     xor ax, ax
+    ret
+
+; receiving the data in 'dx'
+; For the examples we'll assume that we're called with dx=0x1234
+print_hex:
+    pusha
+
+    mov cx, 0 ; our index variable
+
+; Strategy: get the last char of 'dx', then convert to ASCII
+; Numeric ASCII values: '0' (ASCII 0x30) to '9' (0x39), so just add 0x30 to byte N.
+; For alphabetic characters A-F: 'A' (ASCII 0x41) to 'F' (0x46) we'll add 0x40
+; Then, move the ASCII byte to the correct position on the resulting string
+hex_loop:
+    cmp cx, 4 ; loop 4 times
+    je end
+    
+    ; 1. convert last char of 'dx' to ascii
+    mov ax, dx ; we will use 'ax' as our working register
+    and ax, 0x000f ; 0x1234 -> 0x0004 by masking first three to zeros
+    add al, 0x30 ; add 0x30 to N to convert it to ASCII "N"
+    cmp al, 0x39 ; if > 9, add extra 8 to represent 'A' to 'F'
+    jle step2
+    add al, 7 ; 'A' is ASCII 65 instead of 58, so 65-58=7
+
+step2:
+    ; 2. get the correct position of the string to place our ASCII char
+    ; bx <- base address + string length - index of char
+    mov bx, HEX_OUT + 5 ; base + length
+    sub bx, cx  ; our index variable
+    mov [bx], al ; copy the ASCII char on 'al' to the position pointed by 'bx'
+    ror dx, 4 ; 0x1234 -> 0x4123 -> 0x3412 -> 0x2341 -> 0x1234
+
+    ; increment index and loop
+    add cx, 1
+    jmp hex_loop
+
+end:
+    ; prepare the parameter and call the function
+    ; remember that print receives parameters in 'bx'
+    mov bx, HEX_OUT
+    call print
+
+    popa
+    ret
+
+HEX_OUT:
+    db '0x0000',0 ; reserve memory for our new string
+
+print:
+    pusha
+
+; keep this in mind:
+; while (string[i] != 0) { print string[i]; i++ }
+
+; the comparison for string end (null byte)
+start:
+    mov al, [bx] ; 'bx' is the base address for the string
+    cmp al, 0 
+    je done
+
+    ; the part where we print with the BIOS help
+    mov ah, 0x0e
+    int 0x10 ; 'al' already contains the char
+
+    ; increment pointer and do next loop
+    add bx, 1
+    jmp start
+
+done:
+    popa
     ret
 
 times 1536-($-$$) db 0

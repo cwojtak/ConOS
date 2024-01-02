@@ -1,5 +1,5 @@
 [bits 16]
-stage2:
+stage2_mem:
     call get_memory_map
     call get_memory_size_legacy
     mov [0x9c00], ax
