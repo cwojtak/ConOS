@@ -51,6 +51,8 @@ main:
 
     call load_gdt
 
+    call get_memory_map
+
     call stage2
 
     call stage3
@@ -67,10 +69,12 @@ PM:
 
 	mov eax, 0x2BADB002
 	mov ebx, 0
-	mov word [boot_info+multiboot_info.mmap_addr], 0x9c08
-	mov word dx, [0x9c04]
+	mov word [boot_info+multiboot_info.mmap_addr], 0x508
+	mov word dx, [0x504]
 	mov word [boot_info+multiboot_info.mmap_length], dx
 
+    mov edx, [0x500]
+    push edx
 	push dword boot_info
 	call KERNEL_OFFSET
 	jmp $
@@ -163,7 +167,7 @@ read_disk_lba:
     pop cx
     pop bx
     pop ax
-    ;int 0x18
+    int 0x18
     ret
 read_disk_lba_success:
     pop cx
@@ -288,11 +292,6 @@ load_kernel_image:
     add ax, word [datasector]
     mov [d_lba], ax
 
-    push dx
-    mov dx, ax
-    call print_hex
-    pop dx
-
     call read_disk_lba
 
     mov ax, word [bpbSectorsPerCluster]
@@ -302,7 +301,7 @@ load_kernel_image:
 
     pop ecx
     inc ecx
-    cmp ecx, 54
+    cmp ecx, 54 ; TEMPORARY - TODO: copy kernel or bootloader or something into higher memory so that there's enough space for the kernel.
     jge load_kernel_done
     push ecx
     
@@ -338,77 +337,6 @@ load_kernel_done:
     pop bx
     pop ecx
     xor ax, ax
-    ret
-
-; receiving the data in 'dx'
-; For the examples we'll assume that we're called with dx=0x1234
-print_hex:
-    pusha
-
-    mov cx, 0 ; our index variable
-
-; Strategy: get the last char of 'dx', then convert to ASCII
-; Numeric ASCII values: '0' (ASCII 0x30) to '9' (0x39), so just add 0x30 to byte N.
-; For alphabetic characters A-F: 'A' (ASCII 0x41) to 'F' (0x46) we'll add 0x40
-; Then, move the ASCII byte to the correct position on the resulting string
-hex_loop:
-    cmp cx, 4 ; loop 4 times
-    je end
-    
-    ; 1. convert last char of 'dx' to ascii
-    mov ax, dx ; we will use 'ax' as our working register
-    and ax, 0x000f ; 0x1234 -> 0x0004 by masking first three to zeros
-    add al, 0x30 ; add 0x30 to N to convert it to ASCII "N"
-    cmp al, 0x39 ; if > 9, add extra 8 to represent 'A' to 'F'
-    jle step2
-    add al, 7 ; 'A' is ASCII 65 instead of 58, so 65-58=7
-
-step2:
-    ; 2. get the correct position of the string to place our ASCII char
-    ; bx <- base address + string length - index of char
-    mov bx, HEX_OUT + 5 ; base + length
-    sub bx, cx  ; our index variable
-    mov [bx], al ; copy the ASCII char on 'al' to the position pointed by 'bx'
-    ror dx, 4 ; 0x1234 -> 0x4123 -> 0x3412 -> 0x2341 -> 0x1234
-
-    ; increment index and loop
-    add cx, 1
-    jmp hex_loop
-
-end:
-    ; prepare the parameter and call the function
-    ; remember that print receives parameters in 'bx'
-    mov bx, HEX_OUT
-    call print
-
-    popa
-    ret
-
-HEX_OUT:
-    db '0x0000',0 ; reserve memory for our new string
-
-print:
-    pusha
-
-; keep this in mind:
-; while (string[i] != 0) { print string[i]; i++ }
-
-; the comparison for string end (null byte)
-start:
-    mov al, [bx] ; 'bx' is the base address for the string
-    cmp al, 0 
-    je done
-
-    ; the part where we print with the BIOS help
-    mov ah, 0x0e
-    int 0x10 ; 'al' already contains the char
-
-    ; increment pointer and do next loop
-    add bx, 1
-    jmp start
-
-done:
-    popa
     ret
 
 times 1536-($-$$) db 0

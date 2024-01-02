@@ -9,7 +9,7 @@ endstruc
 
 get_memory_map:
 	pushad
-	mov di, 0x9c08
+	mov di, 0x508
 	xor ebx, ebx
 	xor	bp, bp			; number of entries stored here
 	mov	edx, 0x0534D4150		; 'SMAP'
@@ -47,7 +47,7 @@ get_memory_map:
 	test ebx, ebx
 	jne short .e8201p
 .e820f:
-	mov [0x9c04], bp
+	mov [0x504], bp
 	clc
 	popad
 	ret

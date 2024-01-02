@@ -1,8 +1,7 @@
 [bits 16]
 stage2_mem:
-    call get_memory_map
     call get_memory_size_legacy
-    mov [0x9c00], ax
+    mov [0x500], ax
     call enable_a20
     ret
 
