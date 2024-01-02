@@ -72,7 +72,7 @@ PM:
 	mov word [boot_info+multiboot_info.mmap_length], dx
 
 	push dword boot_info
-	;call KERNEL_OFFSET
+	call KERNEL_OFFSET
 	jmp $
 
 MSG_PROT_MODE db "Successfully switched to 32-bit mode!"
@@ -267,6 +267,7 @@ load_kernel_fat:
     pop es
     mov dx, word [es:di + 0x001A]
     mov word [cluster], dx
+
     pop bx
     pop es
     push bx
@@ -280,20 +281,21 @@ load_kernel_image:
 
     call cluster_lba
 
-    xor ax, ax
-    mov al, [bpbSectorsPerCluster]
-    mov word [blockcount], ax
+    xor cx, cx
+    mov cl, [bpbSectorsPerCluster]
+    mov word [blockcount], cx
     mov word [db_add], bx
-    mov [d_lba], cx
-    
-    call read_disk_lba
+    add ax, word [datasector]
+    mov [d_lba], ax
 
     push dx
-    mov dx, bx
+    mov dx, ax
     call print_hex
     pop dx
 
-    xor cx, cx
+    call read_disk_lba
+
+    mov ax, word [bpbSectorsPerCluster]
     mov cx, word [bpbBytesPerSector]
     mul cx
     add bx, ax
