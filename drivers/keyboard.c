@@ -205,5 +205,6 @@ static void keyboard_callback(registers_t *regs) {
 }
 
 void init_keyboard() {
-   register_interrupt_handler(IRQ1, keyboard_callback);
+    for(int i = 0; i < 256; i++) key_buffer[i] = '\0'; //Clear keyboard buffer
+    register_interrupt_handler(IRQ1, keyboard_callback);
 }
