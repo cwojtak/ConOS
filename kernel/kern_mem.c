@@ -79,6 +79,11 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 	struct MemoryManagerEntry* start_ent = theMemoryManager->_mmList;
 	start_ent += (location - theMemoryManager->_memStart) / theMemoryManager->_mmBlockLength;
 
+    //Sometimes the memory manager doesn't quite cover all of memory, so return if the location is outside of memory
+    if(start_ent > theMemoryManager->_mmListEnd || start_ent + (sizeInBlocks / theMemoryManager->_mmBlockLength) > theMemoryManager->_mmListEnd
+        || start_ent < theMemoryManager->_mmList
+        || start_ent + (sizeInBlocks / theMemoryManager->_mmBlockLength) < theMemoryManager->_mmList) return;
+
 	if(theMemoryManager->_mmBlockLength > sizeInBytes)
 	{
 		start_ent->type = 1;
@@ -113,11 +118,9 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 			break;
 		}
 	}
-
 	start_ent->type = 1;
 
 	struct MemoryManagerEntry* end = start_ent;
-
 	struct MemoryManagerEntry* current_ent = start_ent->firstContig;
 	while(current_ent != begin)
 	{
@@ -431,7 +434,7 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
 
 	char output[100] = "";
 	char memStartString[16] = "";
-	hex_to_ascii( theMemoryManager->_memStart, memStartString);
+	hex_to_ascii(theMemoryManager->_memStart, memStartString);
 	strcat("Initializing memory space starting at ", memStartString, output);
 	appendstr(output, ".");
 	log(1, output);
@@ -450,6 +453,7 @@ void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
             resrvStart = memoryStart;
             resrvLength = currentEntry->length - (memoryStart - currentEntry->baseAddress);
         }
+
         mm_reserveat(resrvLength, resrvStart);
 
         currentEntry++;

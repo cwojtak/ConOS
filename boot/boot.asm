@@ -55,12 +55,7 @@ main:
 
     call stage2
 
-    call stage3
-
-    call pm_switch
-
-    cli
-    hlt
+    jmp stage3
 
 [bits 32]
 PM:
@@ -138,14 +133,7 @@ stage3:
     mov ebx, 0
     mov ebp, KERNEL_OFFSET
     mov esi, KERN_IMAGE_NAME
-    call load_kernel
-    mov dword [KERN_IMAGE_SIZE], ecx
-    cmp ax, 0
-    jne stage3_error
-    ret
-stage3_error:
-    cli
-    hlt
+    jmp load_kernel
 
 cluster_lba:
     sub ax, 0x0002
@@ -252,9 +240,9 @@ load_kernel:
 load_kernel_find:
     push bx
     push bp
-    
+
     call find_file
-    
+
     cmp ax, -1
     jne load_kernel_fat
     pop bp
@@ -276,8 +264,9 @@ load_kernel_fat:
     pop es
     push bx
     push es
-    
+
     call load_fat
+
 load_kernel_image:
     mov ax, WORD [cluster]
     pop es
@@ -301,7 +290,7 @@ load_kernel_image:
 
     pop ecx
     inc ecx
-    cmp ecx, 54 ; TEMPORARY - TODO: copy kernel or bootloader or something into higher memory so that there's enough space for the kernel.
+    cmp ecx, 50 ; TEMPORARY - TODO: copy kernel or bootloader or something into higher memory so that there's enough space for the kernel.
     jge load_kernel_done
     push ecx
     
@@ -337,7 +326,9 @@ load_kernel_done:
     pop bx
     pop ecx
     xor ax, ax
-    ret
+
+    mov dword [KERN_IMAGE_SIZE], ecx
+    jmp pm_switch
 
 times 1536-($-$$) db 0
 

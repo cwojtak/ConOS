@@ -1,9 +1,5 @@
 #include "kernel.h"
 
-void setEntryPoint(){
-/* Keeps the kernel_entry.asm from jumping to kernel.c:0x00 */
-}
-
 static int shell_context = 0;
 //0 = standard
 //1 = LOG_BLOCK
