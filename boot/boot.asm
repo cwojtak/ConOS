@@ -2,8 +2,9 @@
 
 [org 0x7c00]
 STAGE2_OFFSET equ 0x7e00
-STAGE3_OFFSET equ 0x8100
-KERNEL_OFFSET equ 0x1000
+STAGE3_OFFSET equ 0x8000
+KERNEL_SEGMENT equ 0x1000
+KERNEL_OFFSET equ 0x10000 ; KERNEL_SEGMENT / 0x10
 
 ; Entry
 [bits 16]
@@ -21,7 +22,7 @@ bpbNumberOfFATs:        db 1
 bpbRootEntries:         dw 224
 bpbTotalSectors:        dw 4086
 bpbMedia:               db 0xf0
-bpbSectorsPerFAT:       dw 0x0c ; could be 0x09?
+bpbSectorsPerFAT:       dw 0x0c
 bpbSectorsPerTrack:     dw 18
 bpbHeadsPerCylinder:    dw 2
 bpbHiddenSectors:       dd 0
@@ -40,7 +41,7 @@ main:
     xor ax, ax
     mov  dl, [BOOT_DRIVE]
 
-    ; Load stages 2 and 3 into memory at 0x7e00 and 0x8100
+    ; Load stages 2 and 3 into memory at 0x7e00 and 0x8000
 
     mov bx, STAGE2_OFFSET
     mov dh, 2
@@ -56,26 +57,6 @@ main:
     call stage2
 
     jmp stage3
-
-[bits 32]
-PM:
-	mov ebx, MSG_PROT_MODE
-	call print_string_pm
-
-	mov eax, 0x2BADB002
-	mov ebx, 0
-	mov word [boot_info+multiboot_info.mmap_addr], 0x508
-	mov word dx, [0x504]
-	mov word [boot_info+multiboot_info.mmap_length], dx
-
-    mov edx, [0x500]
-    push edx
-	push dword boot_info
-	call KERNEL_OFFSET
-	jmp $
-
-MSG_PROT_MODE db "Successfully switched to 32-bit mode!"
-dd 0x0
 
 %include "boot/stage1_disk.asm"
 %include "boot/stage1_32bit.asm"
@@ -101,8 +82,8 @@ times 1024-($-$$) db 0
 ; END STAGE 2
 ; BEGIN STAGE 3
 
-FAT_SEG equ 0x830
-FAT_OFFSET equ 0x8300
+FAT_SEG equ 0x820
+FAT_OFFSET equ 0x8200
 ROOT_DIRECTORY_SEG equ 0x100
 ROOT_DIRECTORY_OFFSET equ 0x1000
 
@@ -111,7 +92,7 @@ DATA_PACKET:
             db 0x0
 blockcount: dw 0x1
 db_add:     dw 0x0
-            dw 0x0
+db_seg:     dw 0x0
 d_lba:      dd 0x1
             dd 0x0
 
@@ -131,7 +112,7 @@ stage3:
     call load_root
 
     mov ebx, 0
-    mov ebp, KERNEL_OFFSET
+    mov ebp, KERNEL_SEGMENT
     mov esi, KERN_IMAGE_NAME
     jmp load_kernel
 
@@ -277,7 +258,8 @@ load_kernel_image:
     xor cx, cx
     mov cl, [bpbSectorsPerCluster]
     mov word [blockcount], cx
-    mov word [db_add], bx
+    mov word [db_seg], bx
+    mov word [db_add], 0x0
     add ax, word [datasector]
     mov [d_lba], ax
 
@@ -286,12 +268,11 @@ load_kernel_image:
     mov ax, word [bpbSectorsPerCluster]
     mov cx, word [bpbBytesPerSector]
     mul cx
+    shr ax, 4
     add bx, ax
 
     pop ecx
     inc ecx
-    cmp ecx, 50 ; TEMPORARY - TODO: copy kernel or bootloader or something into higher memory so that there's enough space for the kernel.
-    jge load_kernel_done
     push ecx
     
     push bx

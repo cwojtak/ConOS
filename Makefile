@@ -27,10 +27,10 @@ os-image.bin: boot/boot.bin kernel.bin
 	sudo rmdir /mnt/ConOS
 
 kernel.bin: boot/kernel_entry.o ${OBJ} ${CPP_OBJ}
-	ld -melf_i386 -o $@ -Ttext 0x1000 $^ --oformat binary
+	ld -melf_i386 -o $@ -Ttext 0x10000 $^ --oformat binary
 
 kernel.elf: boot/kernel_entry.o ${OBJ} ${CPP_OBJ}
-	ld  -melf_i386 -o $@ -Ttext 0x1000 $^
+	ld  -melf_i386 -o $@ -Ttext 0x10000 $^
 
 run: os-image.bin
 	qemu-system-x86_64 -serial file:serial.log -hda $<
