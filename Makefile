@@ -6,7 +6,7 @@ OBJ =  $(C_SOURCES:.c=.o cpu/interrupt.o)
 CPP_OBJ = $(CPP_SOURCES:.cpp=.o)
 
 
-CC = /usr/bin/gcc
+CC = ~/opt/cross/bin/i386-elf-gcc
 GDB = /usr/bin/gdb
 
 CFLAGS = -g
