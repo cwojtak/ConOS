@@ -20,6 +20,12 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 
 	prepare_memory_manager((struct MemoryMapEntry*)bootInfo->mmap_addr, bootInfo->mmap_length);
 
+    log(1, "Loading file system...");
+    uintptr_t mbr = load_mbr();
+    uintptr_t fat = load_fat((struct mbr_info*)mbr);
+    uintptr_t root_directory = load_root_directory((struct mbr_info*)mbr);
+    log(1, "File system successfully loaded!");
+
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
 	kprint("d88P  Y88b                   d88P   Y88b d88P  Y88b \n");
 	kprint("888    888                   888     888 Y88b.      \n");

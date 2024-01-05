@@ -2,13 +2,14 @@
 #define KERNEL_H
 
 #include "../drivers/screen.h"
+#include "kern_disk.h"
 #include "../libc/string.h"
 #include "../cpu/isr.h"
 #include "../libc/mem.h"
 #include "kern_mem.h"
 #include "log.h"
 
-struct multiboot_info {
+struct __attribute__((__packed__)) multiboot_info {
     uint32_t flags;
     uint32_t memoryLo;
     uint32_t memoryHi;
