@@ -1,5 +1,15 @@
 #include "kern_disk.h"
 
+void prepare_kernel_fs()
+{
+    log(1, "Loading file system...");
+    uintptr_t mbr = load_mbr();
+    uintptr_t fat = load_fat((struct mbr_info*)mbr);
+    uintptr_t root_directory = load_root_directory((struct mbr_info*)mbr);
+    fat12_initialize_info((struct mbr_info*)mbr, fat, root_directory);
+    log(1, "File system successfully loaded!");
+}
+
 uintptr_t load_mbr()
 {
     uintptr_t buf = mm_allocate(0x200);

@@ -2,6 +2,7 @@
 #define KERNEL_H
 
 #include "../drivers/screen.h"
+#include "../drivers/fat12.h"
 #include "kern_disk.h"
 #include "../libc/string.h"
 #include "../cpu/isr.h"
