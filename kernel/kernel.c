@@ -160,7 +160,7 @@ void user_input(char *input)
             }
 
             mm_free((uintptr_t)files.files);
-            kprint("\n>");
+            kprint("\n> ");
         }
 		else
 		{

@@ -23,6 +23,7 @@ uintptr_t load_fat(struct mbr_info* mbr)
     uint32_t fat_offset = mbr->reservedSectorCount;
     uintptr_t buf = mm_allocate(fat_size * mbr->bytesPerSector);
     ata_read_sectors_from_disk(fat_offset, fat_size, buf);
+
     return buf;
 }
 
@@ -37,5 +38,5 @@ uintptr_t load_root_directory(struct mbr_info* mbr)
     uintptr_t buf = mm_allocate(root_size * mbr->bytesPerSector);
     ata_read_sectors_from_disk(root_offset, root_size, buf);
 
-    return 0;
+    return buf;
 }
