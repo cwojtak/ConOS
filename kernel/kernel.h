@@ -8,6 +8,7 @@
 #include "../cpu/isr.h"
 #include "../libc/mem.h"
 #include "kern_mem.h"
+#include "kern_pci.h"
 #include "log.h"
 
 struct __attribute__((__packed__)) multiboot_info {

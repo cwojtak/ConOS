@@ -18,8 +18,13 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	hex_to_ascii(legacyMemorySize, legMemMessage);
 	log(1, legMemMessage);
 
+    log(1, "Preparing memory manager...");
 	prepare_memory_manager((struct MemoryMapEntry*)bootInfo->mmap_addr, bootInfo->mmap_length);
 
+    log(1, "Enumerating PCI devices...");
+    prepare_kernel_pci();
+
+    log(1, "Preparing kernel filesystem...");
     prepare_kernel_fs();
 
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
