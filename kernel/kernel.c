@@ -22,10 +22,10 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	prepare_memory_manager((struct MemoryMapEntry*)bootInfo->mmap_addr, bootInfo->mmap_length);
 
     log(1, "Enumerating PCI devices...");
-    prepare_kernel_pci();
+    Array* pci_devices = prepare_kernel_pci();
 
-    log(1, "Preparing kernel filesystem...");
-    prepare_kernel_fs();
+    //log(1, "Preparing kernel filesystem...");
+    //prepare_kernel_fs();
 
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
 	kprint("d88P  Y88b                   d88P   Y88b d88P  Y88b \n");
