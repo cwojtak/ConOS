@@ -2,10 +2,38 @@
 
 Array* prepare_kernel_pci()
 {
-    Array* pci_devices = NULL;
+    Array* pci_devices = (Array*)mm_allocate(sizeof(Array*));
     initArray(pci_devices, 16);
     pciEnumerate(pci_devices);
     return pci_devices;
+}
+
+void log_pci_device(struct PCI_DEVICE* dev)
+{
+    char msg[256] = "Device ";
+    char baseClass[32] = "";
+    char subClass[32] = "";
+    char progIF[32] = "";
+    char deviceID[32] = "";
+    char vendorID[32] = "";
+
+    hex_to_ascii(dev->baseClass, baseClass);
+    hex_to_ascii(dev->subClass, subClass);
+    hex_to_ascii(dev->progIF, progIF);
+    hex_to_ascii(dev->deviceID, deviceID);
+    hex_to_ascii(dev->vendorID, vendorID);
+
+    strcat(msg, vendorID, msg);
+    strcat(msg, ":", msg);
+    strcat(msg, deviceID, msg);
+    strcat(msg, " - Base class ", msg);
+    strcat(msg, baseClass, msg);
+    strcat(msg, ", Sub class ", msg);
+    strcat(msg, subClass, msg);
+    strcat(msg, ", Prog info ", msg);
+    strcat(msg, progIF, msg);
+
+    log(1, msg);
 }
 
 void pciEnumerate(Array* pci_devices)
@@ -61,7 +89,8 @@ void pciCheckFunction(uint8_t bus, uint8_t device, uint8_t function, Array* pci_
     uint8_t subClass = pciGetSubClass(bus, device, function);
     uint8_t progIF = pciGetProgIF(bus, device, function);
 
-    struct PCI_DEVICE* dev = (struct PCI_DEVICE*)mm_allocate(sizeof(struct PCI_DEVICE));
+    struct PCI_DEVICE* dev = (struct PCI_DEVICE*)mm_allocate(sizeof(struct PCI_DEVICE));   
+
     dev->baseClass = baseClass;
     dev->subClass = subClass;
     dev->progIF = progIF;
@@ -74,15 +103,6 @@ void pciCheckFunction(uint8_t bus, uint8_t device, uint8_t function, Array* pci_
     if((baseClass == 0x6) && (subClass == 0x4))
     {
         pciCheckBus(pciGetSecondaryBus(bus, device, function), pci_devices);
-    }
-    //Detect IDE controllers for disk access
-    else if(baseClass == 0x1 && subClass == 0x1)
-    {
-        //Check if controller is in compatibility mode
-        if(progIF & 0x1 == 0)
-        {
-            
-        }
     }
 }
 

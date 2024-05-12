@@ -2,6 +2,8 @@
 #define KERNEL_PCI
 
 #include "../cpu/ports.h"
+#include "../kernel/log.h"
+#include "../libc/string.h"
 #include "../libc/dynamic_array.h"
 
 struct PCI_DEVICE
@@ -14,6 +16,7 @@ struct PCI_DEVICE
 };
 
 Array* prepare_kernel_pci();
+void log_pci_device(struct PCI_DEVICE* dev);
 
 void pciEnumerate(Array* pci_devices);
 void pciCheckBus(uint8_t bus, Array* pci_devices);

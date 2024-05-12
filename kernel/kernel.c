@@ -24,6 +24,12 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
     log(1, "Enumerating PCI devices...");
     Array* pci_devices = prepare_kernel_pci();
 
+	log(1, "Identified PCI devices: ");
+	for(int i = 0; i < pci_devices->used; i++)
+	{
+		log_pci_device((struct PCI_DEVICE*)(pci_devices->array[i]));
+	}
+
     //log(1, "Preparing kernel filesystem...");
     //prepare_kernel_fs();
 
