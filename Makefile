@@ -6,15 +6,12 @@ OBJ =  $(C_SOURCES:.c=.o cpu/interrupt.o)
 CPP_OBJ = $(CPP_SOURCES:.cpp=.o)
 
 
-CC = ~/opt/cross/bin/i386-elf-gcc
+CC = ${CONOS_CC}
 GDB = /usr/bin/gdb
 
 CFLAGS = -g
 
 all: run
-
-#os-image.bin: boot/boot.bin kernel.bin
-#	cat $^ > os-image.bin
 
 os-image.bin: boot/boot.bin kernel.bin
 	dd if=/dev/zero of=./os-image.bin bs=64K count=32

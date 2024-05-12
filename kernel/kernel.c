@@ -18,7 +18,20 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	hex_to_ascii(legacyMemorySize, legMemMessage);
 	log(1, legMemMessage);
 
+    log(1, "Preparing memory manager...");
 	prepare_memory_manager((struct MemoryMapEntry*)bootInfo->mmap_addr, bootInfo->mmap_length);
+
+    log(1, "Enumerating PCI devices...");
+    Array* pci_devices = prepare_kernel_pci();
+
+	log(1, "Identified PCI devices: ");
+	for(int i = 0; i < pci_devices->used; i++)
+	{
+		log_pci_device((struct PCI_DEVICE*)(pci_devices->array[i]));
+	}
+
+    //log(1, "Preparing kernel filesystem...");
+    //prepare_kernel_fs();
 
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
 	kprint("d88P  Y88b                   d88P   Y88b d88P  Y88b \n");
@@ -99,6 +112,7 @@ void user_input(char *input)
 			kprint("LOG_BLOCK - Log a memory block\n");
 			kprint("ALLOC_MEM - Allocate some memory\n");
 			kprint("FREE_MEM - Free some memory\n");
+            kprint("LS - List all the files in the current working directory\n");
 			kprint("> ");
 		}
 		else if (strcmp(input, "PAGE") == 0)
@@ -139,6 +153,26 @@ void user_input(char *input)
 			shell_context = 3;
 			kprint("Enter the address (base 10) to free (enter 0 to cancel): ");
 		}
+        else if (strcmp(input, "LS") == 0)
+        {
+            struct FILE currentDirectory;
+            currentDirectory.path[0] = '/';
+            currentDirectory.path[1] = '\0';
+            currentDirectory.isDirectory = 1; //(true)
+            currentDirectory.firstCluster = 0;
+
+            struct FILE_ENUMERATION files;
+            fat12_enumerate_files(&currentDirectory, &files);
+            
+            for(uint32_t i = 0; i < files.numFiles; i++)
+            {
+                kprint(files.files[i].path);
+                kprint(" ");
+            }
+
+            mm_free((uintptr_t)files.files);
+            kprint("\n> ");
+        }
 		else
 		{
 			kprint("Invalid Command: ");
