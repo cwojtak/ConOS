@@ -1,6 +1,6 @@
 #include "ata.h"
 
-int ata_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uintptr_t buf)
+int ata_try_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uintptr_t buf)
 {
     if(lba_sector > 0x0FFFFFFF) return -1;
 
@@ -12,18 +12,30 @@ int ata_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uintptr
     port_byte_out(0x01F5, (uint8_t)((lba_sector >> 16) & 0xFF));
     port_byte_out(0x01F7, 0x20);
 
-    //Wait for disk read to complete
-    uint8_t test_op = 0;
-    while(test_op && 8 != 0)
+    uint8_t test_op;
+
+    // Wait until BSY (bit 7) is 0 (aka Wait for disk read to complete)
+    while (((test_op = port_byte_in(0x1F7)) & 0x80) != 0);
+
+    // Check if ERR (bit 0) is set which indicates an error
+    if (test_op & 0x01) return -1; 
+
+    // Continue with reading data from the disk
+    for(int i = 0; i < 256 * num_sectors; i++)
     {
-        test_op = port_byte_in(0x1F7);
+        uint16_t data = port_word_in(0x01F0);
+        *(uint16_t *)(buf + i * 2) = data;
     }
 
-    for(int i = 0; i < 256 * num_sectors; i++)
-	{
-		uint16_t data = port_word_in(0x01F0);
-		*(uint16_t *)(buf + i * 2) = data;
-	}
-
     return 0;
+}
+
+int ata_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uintptr_t buf)
+{
+    for (int attempt = 0; attempt < 3; attempt++) 
+    {
+        return ata_try_read_sectors_from_disk(lba_sector, num_sectors, buf);
+    }
+
+    return -1;
 } 
