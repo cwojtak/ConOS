@@ -107,7 +107,7 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 
 	//Keep reserving blocks until the requested amount is reserved
 	size_t remainingBytes = sizeInBytes - theMemoryManager->_mmBlockLength;
-	while(remainingBytes > theMemoryManager->_mmBlockLength)
+	while(remainingBytes > 0)
 	{
 		start_ent->type = 1;
 		start_ent++;
@@ -177,6 +177,7 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 		}
 		start_ent->firstContig = start_ent;
 		start_ent->lastContig = start_ent;
+
 		return retAddress;
 	}
 
@@ -479,6 +480,7 @@ struct MemoryManagerEntry* bestFit(size_t sizeInBytes, struct MemoryManagerEntry
 		}
 
 		size_t holeSize = (uintptr_t)((void*)current_ent->lastContig - (void*)current_ent->firstContig + (void*)sizeof(*current_ent)) / sizeof(*current_ent) * theMemoryManager->_mmBlockLength;
+
 		if(holeSize >= sizeInBytes)
 		{
 			if (holeSize < smallestLargeEnoughHoleSize || smallestLargeEnoughHoleSize == 0)
@@ -490,6 +492,5 @@ struct MemoryManagerEntry* bestFit(size_t sizeInBytes, struct MemoryManagerEntry
 
 		current_ent = current_ent->lastContig + 1;
 	}
-
 	return smallestLargeEnoughHole;
 }
