@@ -4,7 +4,7 @@
 #include "../kernel/kern_mem.h"
 
 typedef struct {
-    uintptr_t* array;
+    uintptr_t array;
     size_t used;
     size_t size;
 } Array;
