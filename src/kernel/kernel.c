@@ -5,6 +5,7 @@ static int shell_context = 0;
 //1 = LOG_BLOCK
 //2 = ALLOC_MEM
 //3 = FREE_MEM
+//4 = PRINT_MEM
 
 void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 	clear_screen();
@@ -32,8 +33,8 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 		log_pci_device((struct PCI_DEVICE*)(struc));
 	}
 
-    //log(1, "Preparing kernel filesystem...");
-    //prepare_kernel_fs();
+    log(1, "Preparing kernel filesystem...");
+    prepare_kernel_fs(pci_devices);
 
 	kprint(" .d8888b.                     .d88888b.   .d8888b.  \n");
 	kprint("d88P  Y88b                   d88P   Y88b d88P  Y88b \n");
@@ -97,6 +98,20 @@ void user_input(char *input)
 		shell_context = 0;
 		kprint("> ");
 	}
+	else if(shell_context == 4)
+	{
+		int i = atoi(input);
+		if(i != 0)
+		{
+			uint32_t* addr = (uint32_t*)i;
+			uint32_t value = *addr;
+			char output[64] = "";
+			hex_to_ascii(value, output);
+			kprint(output);
+		}
+		shell_context = 0;
+		kprint("\n> ");
+	}
 	else
 	{
 		if (strcmp(input, "END") == 0)
@@ -114,6 +129,7 @@ void user_input(char *input)
 			kprint("LOG_BLOCK - Log a memory block\n");
 			kprint("ALLOC_MEM - Allocate some memory\n");
 			kprint("FREE_MEM - Free some memory\n");
+			kprint("PRINT_MEM - Print memory at a certain address");
             kprint("LS - List all the files in the current working directory\n");
 			kprint("> ");
 		}
@@ -155,6 +171,11 @@ void user_input(char *input)
 			shell_context = 3;
 			kprint("Enter the address (base 10) to free (enter 0 to cancel): ");
 		}
+		else if (strcmp(input, "PRINT_MEM") == 0)
+		{
+			shell_context = 4;
+			kprint("Enter the address (base 10) to print (enter 0 to cancel): ");
+		}
         else if (strcmp(input, "LS") == 0)
         {
             struct FILE currentDirectory;
@@ -166,11 +187,23 @@ void user_input(char *input)
             struct FILE_ENUMERATION files;
             fat12_enumerate_files(&currentDirectory, &files);
             
+			kprint("Contents of ");
+			kprint(currentDirectory.path);
+			kprint(":\n");
+			kprint("NAME, SIZE\n");
             for(uint32_t i = 0; i < files.numFiles; i++)
             {
                 kprint(files.files[i].path);
-                kprint(" ");
+				kprint(" ");
+				char fileSz[32] = "";
+				int_to_ascii(files.files[i].fileSize, fileSz);
+				kprint(fileSz);
+                kprint(" B\n");
             }
+			char numEntries[32] = "";
+			int_to_ascii(files.numFiles, numEntries);
+			kprint(numEntries);
+			kprint(" entries total");
 
             mm_free((uintptr_t)files.files);
             kprint("\n> ");
