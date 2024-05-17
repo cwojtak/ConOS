@@ -23,6 +23,11 @@ int ata_try_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uin
     // Continue with reading data from the disk
     for(int i = 0; i < 256 * num_sectors; i++)
     {
+        if(i % 256 == 0 && i != 0)
+        {
+            // Wait until BSY (bit 7) is 0 (aka Wait for disk read to complete)
+            while (((test_op = port_byte_in(0x1F7)) & 0x80) != 0);
+        }
         uint16_t data = port_word_in(0x01F0);
         *(uint16_t *)(buf + i * 2) = data;
     }
@@ -36,6 +41,6 @@ int ata_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uintptr
     {
         return ata_try_read_sectors_from_disk(lba_sector, num_sectors, buf);
     }
-
+    log(3, "ATA disk read failed with retries.");
     return -1;
 } 

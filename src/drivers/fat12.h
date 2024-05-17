@@ -7,6 +7,7 @@ struct FILE {
     char path[256];
     uint8_t isDirectory;
     uint16_t firstCluster;
+    uint32_t fileSize;
 };
 
 struct FILE_ENUMERATION {

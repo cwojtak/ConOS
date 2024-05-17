@@ -4,7 +4,7 @@ static struct fat12_fs_info* fs_info;
 
 void fat12_initialize_info(struct mbr_info* mbr, uintptr_t fat, uintptr_t rootDir)
 {
-    fs_info = (struct fat12_fs_info*)mm_allocate(sizeof(uintptr_t) * 2 + sizeof(struct mbr_info*));
+    fs_info = (struct fat12_fs_info*)mm_allocate(sizeof(struct fat12_fs_info));
     fs_info->mbr = mbr;
     fs_info->fat = fat;
     fs_info->rootDir = rootDir;
@@ -19,19 +19,23 @@ void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
         for(int i = 0; i < fs_info->mbr->rootEntryCount; i++)
         {
             char* entry = (char*)(fs_info->rootDir) + (i * 32);
-            if(entry[0] == 0x0) continue;
+            if((entry[11] & 0x8) != 0 || (entry[11] & 0x4) != 0) continue;
+            if(entry[0] == 0x0) break;
             
-            numFiles++;
-            char fileName[11];
-            for(int i = 0; i < 11; i++) fileName[i] = entry[i];
+            char fileName[12];
+            for(int j = 0; j < 11; j++) fileName[j] = entry[j];
+            fileName[11] = '\0';
             if(strlen(directory->path) > 244)
             {
                 log(4, "File enumeration failed; file path too long (> 256 characters).");
                 return;
             }
-            strcat(directory->path, fileName, f_enum[i].path);
-            f_enum[i].isDirectory = 0; //TODO: update to detect subdirectories
-            f_enum[i].firstCluster = *(((uint16_t*)entry) + 13);
+            strcat(directory->path, fileName, f_enum[numFiles].path);
+            strcat(f_enum[numFiles].path, "\0", f_enum[numFiles].path);
+            f_enum[numFiles].isDirectory = 0; //TODO: update to detect subdirectories
+            f_enum[numFiles].firstCluster = *(((uint16_t*)entry) + 13);
+            f_enum[numFiles].fileSize = (entry[28] & 0xFF) | ((entry[29] & 0xFF) << 8) | ((entry[30] & 0xFF) << 16) | ((entry[31] & 0xFF) << 24);
+            numFiles++;
         }
     }
     else
