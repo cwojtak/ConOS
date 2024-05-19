@@ -48,6 +48,7 @@ void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
 
 uint64_t fat12_load_file(struct FILE* file, void** buf)
 {
+    if(file->isDirectory != 0) return 0;
     uint32_t numSectors = 0;
     uint16_t currentCluster = file->firstCluster;
     while(currentCluster != 0x0FFF)
