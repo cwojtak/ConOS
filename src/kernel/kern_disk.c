@@ -4,7 +4,7 @@ void prepare_kernel_fs(Array* pci_devices)
 {
     log(1, "Loading file system...");
 
-    int (*read_sectors_from_disk)(uint32_t, uint8_t, uintptr_t) = NULL;
+    char setDiskReader = 0;
 
     for(int i = 0; i < pci_devices->used; i++)
     {
@@ -13,32 +13,33 @@ void prepare_kernel_fs(Array* pci_devices)
 		struct PCI_DEVICE* device = (struct PCI_DEVICE*)struc;
         if(device->baseClass == 0x1 && device->subClass == 0x1 && device->progIF == 0x0)
         {
-            read_sectors_from_disk = ata_read_sectors_from_disk;
+            setDiskReader = 1;
+            set_disk_reader(ata_read_sectors_from_disk);
             break;
         }
     }
 
-    if(read_sectors_from_disk == NULL)
+    if(!setDiskReader)
     {
         log(3, "No storage devices supported by this OS were found. Failed to load the file system.");
         return;
     }
 
-    uintptr_t mbr = load_mbr(read_sectors_from_disk);
-    uintptr_t fat = load_fat((struct mbr_info*)mbr, read_sectors_from_disk);
-    uintptr_t root_directory = load_root_directory((struct mbr_info*)mbr, read_sectors_from_disk);
+    uintptr_t mbr = load_mbr();
+    uintptr_t fat = load_fat((struct mbr_info*)mbr);
+    uintptr_t root_directory = load_root_directory((struct mbr_info*)mbr);
     fat12_initialize_info((struct mbr_info*)mbr, fat, root_directory);
     log(1, "File system successfully loaded!");
 }
 
-uintptr_t load_mbr(int (*read_sectors_from_disk)(uint32_t, uint8_t, uintptr_t))
+uintptr_t load_mbr()
 {
     uintptr_t buf = mm_allocate(0x200);
     read_sectors_from_disk(0, 1, buf);
     return buf;
 }
 
-uintptr_t load_fat(struct mbr_info* mbr, int (*read_sectors_from_disk)(uint32_t, uint8_t, uintptr_t))
+uintptr_t load_fat(struct mbr_info* mbr)
 {
     uint32_t fat_size = mbr->fatSize;
     uint32_t fat_offset = mbr->reservedSectorCount;
@@ -49,7 +50,7 @@ uintptr_t load_fat(struct mbr_info* mbr, int (*read_sectors_from_disk)(uint32_t,
     return buf;
 }
 
-uintptr_t load_root_directory(struct mbr_info* mbr, int (*read_sectors_from_disk)(uint32_t, uint8_t, uintptr_t))
+uintptr_t load_root_directory(struct mbr_info* mbr)
 {
     uint32_t fat_size = mbr->fatSize;
     uint32_t fat_offset = mbr->reservedSectorCount;

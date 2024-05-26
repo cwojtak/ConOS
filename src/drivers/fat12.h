@@ -2,6 +2,7 @@
 #define FAT12_H
 
 #include "../kernel/kern_mem.h"
+#include "disk.h"
 
 struct FILE {
     char path[256];
@@ -47,6 +48,6 @@ struct __attribute__((__packed__)) mbr_info {
 
 void fat12_initialize_info(struct mbr_info* mbr, uintptr_t fat, uintptr_t rootDir);
 void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out);
-uintptr_t fat12_load_file(struct FILE* file);
+uint64_t fat12_load_file(struct FILE* file, void** buf);
 
 #endif

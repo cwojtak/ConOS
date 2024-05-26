@@ -131,6 +131,7 @@ void user_input(char *input)
 			kprint("FREE_MEM - Free some memory\n");
 			kprint("PRINT_MEM - Print memory at a certain address");
             kprint("LS - List all the files in the current working directory\n");
+			kprint("TEST_READ_FILE - Print the contents of the second file added to the hard drive\n");
 			kprint("> ");
 		}
 		else if (strcmp(input, "PAGE") == 0)
@@ -208,6 +209,28 @@ void user_input(char *input)
             mm_free((uintptr_t)files.files);
             kprint("\n> ");
         }
+		else if(strcmp(input, "TEST_READ_FILE") == 0)
+		{
+			struct FILE currentDirectory;
+            currentDirectory.path[0] = '/';
+            currentDirectory.path[1] = '\0';
+            currentDirectory.isDirectory = 1; //(true)
+            currentDirectory.firstCluster = 0;
+
+			struct FILE_ENUMERATION files;
+			fat12_enumerate_files(&currentDirectory, &files);
+
+			kprint("Reading file ");
+			kprint(files.files[1].path);
+			kprint(":\n");
+
+			void* fileContents = (uintptr_t*)NULL;
+			uint64_t bytesRead = fat12_load_file(&(files.files[1]), &fileContents);
+
+			char* fileText = (char*)fileContents;
+			kprint(fileText);
+			kprint("\n> ");
+		}
 		else
 		{
 			kprint("Invalid Command: ");
