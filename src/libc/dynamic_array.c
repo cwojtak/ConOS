@@ -29,7 +29,20 @@ void insertArray(Array* a, uintptr_t element)
 void freeArray(Array* a)
 {
     mm_free(a->array);
-    mm_free((uintptr_t)a);
     a->array = (uintptr_t)NULL;
     a->used = a->size = 0;
+}
+
+void strsplit_indices(char str[], char splitOn, Array* output)
+{
+    initArray(output, 8);
+    uint32_t substringEnd = 0;
+    for(uint32_t i = 0; i < strlen(str); i++)
+    {
+        if(str[i] == splitOn)
+        {
+            insertArray(output, substringEnd);
+        }
+        substringEnd++;
+    }
 }

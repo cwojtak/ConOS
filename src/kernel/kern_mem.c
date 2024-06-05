@@ -1,6 +1,6 @@
 #include "kern_mem.h"
 
-struct MemoryManager* theMemoryManager;
+struct MemoryManager* theMemoryManager = (struct MemoryManager*)NULL;
 
 void create_memory_manager(unsigned wordSize, struct MemoryManagerEntry* (*allocator)(size_t, struct MemoryManagerEntry*), uintptr_t mmStart, size_t objectLength)
 {
@@ -353,8 +353,29 @@ void mm_logblock(int blocknum)
 	log(1, output);
 }
 
+void mm_copy(uintptr_t src, uintptr_t dest, size_t len) 
+{
+	uint8_t* psrc = (uint8_t*)src;
+	uint8_t* pdest = (uint8_t*)dest;
+    for (uint32_t i = 0; i < len; i++) {
+        *(pdest + i) = *(psrc + i);
+    }
+}
+
+void mm_set(uintptr_t dest, uint8_t val, size_t len)
+{
+    uint8_t* temp = (uint8_t*)dest;
+    for (; len != 0; len--) *temp++ = val;
+}
+
 void prepare_memory_manager(struct MemoryMapEntry* mmap, size_t mmap_size)
 {
+	if(theMemoryManager != NULL)
+	{
+		log(6, "prepare_memory_manager was called multiple times! Ignoring subsequent calls...");
+		return;
+	}
+
     uintptr_t memoryStart = (uintptr_t)NULL;
     uintptr_t memoryEnd = (uintptr_t)NULL;
 

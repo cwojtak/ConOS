@@ -1,6 +1,8 @@
 #ifndef KERN_MEM_H
 #define KERN_MEM_H
 
+#include <stddef.h>
+
 #include "log.h"
 #include "../libc/string.h"
 
@@ -40,6 +42,9 @@ uintptr_t mm_getMemoryStart();
 unsigned mm_getMemoryLimit();
 
 void mm_logblock(int blocknum);
+
+void mm_copy(uintptr_t src, uintptr_t dest, size_t len);
+void mm_set(uintptr_t dest, uint8_t val, size_t len);
 
 struct MemoryMapEntry {
     uint64_t baseAddress;

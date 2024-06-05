@@ -67,6 +67,14 @@ int print_char(char c, int col, int row, char attr) {
 
     /* Error control: print a red 'E' if the coords aren't right */
     if (col >= MAX_COLS || row >= MAX_ROWS) {
+        logSilent(7, "Attempted to print character out of bounds. Out of bounds row and column:");
+        char colOut[64] = "";
+        char rowOut[64] = "";
+        hex_to_ascii(col, colOut);
+        hex_to_ascii(row, rowOut);
+        logSilent(7, rowOut);
+        logSilent(7, colOut);
+
         vidmem[2*(MAX_COLS)*(MAX_ROWS)-2] = 'E';
         vidmem[2*(MAX_COLS)*(MAX_ROWS)-1] = RED_ON_WHITE;
         return get_offset(col, row);
@@ -92,8 +100,8 @@ int print_char(char c, int col, int row, char attr) {
     if (offset >= MAX_ROWS * MAX_COLS * 2) {
         int i;
         for (i = 1; i < MAX_ROWS; i++)
-            memory_copy(get_offset(0, i) + (void*)(long) VIDEO_ADDRESS,
-                        get_offset(0, i-1) + (void*)(long) VIDEO_ADDRESS,
+            mm_copy(get_offset(0, i) + (uintptr_t)(long) VIDEO_ADDRESS,
+                        get_offset(0, i-1) + (uintptr_t)(long) VIDEO_ADDRESS,
                         MAX_COLS * 2);
 
         /* Blank last line */

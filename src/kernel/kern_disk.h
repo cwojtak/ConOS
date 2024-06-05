@@ -9,9 +9,17 @@
 #include "../libc/dynamic_array.h"
 #include "kern_pci.h"
 
+
+enum FS_TYPE
+{
+    FAT12,
+    FAT16,
+    FAT32
+};
+
 void prepare_kernel_fs(Array* pci_devices);
 uintptr_t load_mbr();
-uintptr_t load_fat(struct mbr_info* mbr);
-uintptr_t load_root_directory(struct mbr_info* mbr);
+uintptr_t load_fat(struct fat12_mbr_info* mbr);
+uintptr_t load_root_directory(struct fat12_mbr_info* mbr);
 
 #endif
