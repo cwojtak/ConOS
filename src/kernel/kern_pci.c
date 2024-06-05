@@ -1,14 +1,32 @@
 #include "kern_pci.h"
 
+static Array* pci_devices = (Array*)NULL;
+
 Array* prepare_kernel_pci()
 {
-    Array* pci_devices = (Array*)mm_allocate(sizeof(Array*));
+    if(pci_devices != NULL)
+    {
+        for(int i = 0; i < pci_devices->used; i++)
+        {
+            uintptr_t addr = pci_devices->array + (uintptr_t)i * sizeof(uintptr_t);
+            uintptr_t struc = *(uintptr_t*)(addr);
+            mm_free(struc);
+        }
+        freeArray(pci_devices);
+        mm_free((uintptr_t)pci_devices);
+    }
+    pci_devices = (Array*)mm_allocate(sizeof(Array*));
     initArray(pci_devices, 16);
     pciEnumerate(pci_devices);
     return pci_devices;
 }
 
-void log_pci_device(struct PCI_DEVICE* dev)
+Array* pci_get_devices()
+{
+    return pci_devices;
+}
+
+void pci_log_device(struct PCI_DEVICE* dev)
 {
     char msg[256] = "Device ";
     char baseClass[32] = "";

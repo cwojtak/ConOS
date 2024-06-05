@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include "../cpu/ports.h"
-#include "../libc/mem.h"
+#include "../kernel/kern_mem.h"
 
 #define VIDEO_ADDRESS 0xb8000
 #define MAX_ROWS 25

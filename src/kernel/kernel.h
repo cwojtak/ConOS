@@ -6,7 +6,6 @@
 #include "kern_disk.h"
 #include "../libc/string.h"
 #include "../cpu/isr.h"
-#include "../libc/mem.h"
 #include "kern_mem.h"
 #include "kern_pci.h"
 #include "log.h"

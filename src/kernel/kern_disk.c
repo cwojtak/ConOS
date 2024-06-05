@@ -1,5 +1,7 @@
 #include "kern_disk.h"
 
+static enum FS_TYPE fs_format;
+
 void prepare_kernel_fs(Array* pci_devices)
 {
     log(1, "Loading file system...");
@@ -25,11 +27,47 @@ void prepare_kernel_fs(Array* pci_devices)
         return;
     }
 
+    //Identify the filesystem
+    //First, trying loading an MBR to identify FAT filesystems
     uintptr_t mbr = load_mbr();
-    uintptr_t fat = load_fat((struct mbr_info*)mbr);
-    uintptr_t root_directory = load_root_directory((struct mbr_info*)mbr);
-    fat12_initialize_info((struct mbr_info*)mbr, fat, root_directory);
-    log(1, "File system successfully loaded!");
+    struct fat12_mbr_info* common_mbr = (struct fat12_mbr_info*)mbr;
+    
+    //Sanity check to ensure we are loading some sort of FAT filesystem
+    if(common_mbr->fatType[0] == 'F' && common_mbr->fatType[1] == 'A' && common_mbr->fatType[2] == 'T')
+    {
+        //Determine the total number of sectors of the filesystem
+        uint32_t totalSectors = 0;
+        if(common_mbr->totalSectors16 != 0) totalSectors = common_mbr->totalSectors16;
+        else totalSectors = common_mbr->totalSectors32;
+
+        //Determine the number of clusters
+        uint32_t totalClusters = (totalSectors - (common_mbr->reservedSectorCount + (common_mbr->numFats * common_mbr->fatSize) +
+            (((common_mbr->rootEntryCount * 32) + common_mbr->bytesPerSector - 1) / common_mbr->bytesPerSector))) / common_mbr->sectorsPerCluster;
+
+        //FAT 12
+        if(totalClusters < 4085)
+        {
+            uintptr_t fat = load_fat((struct fat12_mbr_info*)mbr);
+            uintptr_t root_directory = load_root_directory((struct fat12_mbr_info*)mbr);
+            fat12_initialize_info((struct fat12_mbr_info*)mbr, fat, root_directory);
+            log(1, "File system successfully loaded!");
+            return;
+        }
+        //FAT 16
+        else if (totalClusters < 65525)
+        {
+            log(3, "Detected a FAT 16 file system; unable to load this type of file system.");
+            return;
+        }
+        //FAT 32
+        else
+        {
+            log(3, "Detected a FAT 32 file system; unable to load this type of file system.");
+            return;
+        }
+    }
+
+    log(3, "Unable to detect the file system type of the current disk. No file system will be loaded.");
 }
 
 uintptr_t load_mbr()
@@ -39,7 +77,7 @@ uintptr_t load_mbr()
     return buf;
 }
 
-uintptr_t load_fat(struct mbr_info* mbr)
+uintptr_t load_fat(struct fat12_mbr_info* mbr)
 {
     uint32_t fat_size = mbr->fatSize;
     uint32_t fat_offset = mbr->reservedSectorCount;
@@ -50,7 +88,7 @@ uintptr_t load_fat(struct mbr_info* mbr)
     return buf;
 }
 
-uintptr_t load_root_directory(struct mbr_info* mbr)
+uintptr_t load_root_directory(struct fat12_mbr_info* mbr)
 {
     uint32_t fat_size = mbr->fatSize;
     uint32_t fat_offset = mbr->reservedSectorCount;

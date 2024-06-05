@@ -1,16 +1,23 @@
 #include "fat12.h"
 
-static struct fat12_fs_info* fs_info;
+static struct fat12_fs_info* fs_info = (struct fat12_fs_info*)NULL;
 
-void fat12_initialize_info(struct mbr_info* mbr, uintptr_t fat, uintptr_t rootDir)
+void fat12_initialize_info(struct fat12_mbr_info* mbr, uintptr_t fat, uintptr_t rootDir)
 {
+    if(fs_info != NULL)
+    {
+        mm_free((uintptr_t)fs_info->mbr);
+        mm_free((uintptr_t)fs_info->fat);
+        mm_free((uintptr_t)fs_info->rootDir);
+        mm_free((uintptr_t)fs_info);
+    }
     fs_info = (struct fat12_fs_info*)mm_allocate(sizeof(struct fat12_fs_info));
     fs_info->mbr = mbr;
     fs_info->fat = fat;
     fs_info->rootDir = rootDir;
 }
 
-void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
+enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
 {
     struct FILE* f_enum = (struct FILE*)mm_allocate(sizeof(struct FILE) * fs_info->mbr->rootEntryCount);
     uint32_t numFiles = 0;
@@ -28,11 +35,11 @@ void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
             if(strlen(directory->path) > 244)
             {
                 log(4, "File enumeration failed; file path too long (> 256 characters).");
-                return;
+                return INVALID_PATH;
             }
             strcat(directory->path, fileName, f_enum[numFiles].path);
             strcat(f_enum[numFiles].path, "\0", f_enum[numFiles].path);
-            f_enum[numFiles].isDirectory = 0; //TODO: update to detect subdirectories
+            f_enum[numFiles].isDirectory = 0;
             f_enum[numFiles].firstCluster = *(((uint16_t*)entry) + 13);
             f_enum[numFiles].fileSize = (entry[28] & 0xFF) | ((entry[29] & 0xFF) << 8) | ((entry[30] & 0xFF) << 16) | ((entry[31] & 0xFF) << 24);
             numFiles++;
@@ -40,15 +47,54 @@ void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
     }
     else
     {
-        //TODO: implement enumeration for subdirectories
+        log(4, "Only the root directory is available in FAT 12.");
+        return INVALID_PATH;
     }
     out->files = f_enum;
     out->numFiles = numFiles;
+    return OK;
 }
 
-uint64_t fat12_load_file(struct FILE* file, void** buf)
+enum FS_ERROR fat12_find_file(char path[], struct FILE* output)
 {
-    if(file->isDirectory != 0) return 0;
+    Array path_split;
+    strsplit_indices(path, '/', &path_split);
+    if(path_split.used != 1 || path[0] != '/')
+    {
+        log(3, "Invalid path provided for FAT 12 filesystem.");
+        return INVALID_PATH;
+    }
+    uint32_t nameLocation = ((uint32_t*)path_split.array)[0];
+    uintptr_t searchFileName = mm_allocate(strlen(path) - 1 - nameLocation);
+    mm_copy((uintptr_t)(path + nameLocation + 1), searchFileName, strlen(path) - 1 - nameLocation);
+    freeArray(&path_split);
+
+    for(int i = 0; i < fs_info->mbr->rootEntryCount; i++)
+    {
+        char* entry = (char*)(fs_info->rootDir) + (i * 32);
+        if((entry[11] & 0x8) != 0 || (entry[11] & 0x4) != 0) continue;
+        if(entry[0] == 0x0) break;
+        
+        char fileName[12];
+        for(int j = 0; j < 11; j++) fileName[j] = entry[j];
+        fileName[11] = '\0';
+
+        if(strcmp(fileName, (char*)searchFileName) == 0)
+        {
+            strcat("/", fileName, output->path);
+            strcat(output->path, "\0", output->path);
+            output->isDirectory = 0;
+            output->firstCluster = *(((uint16_t*)entry) + 13);
+            output->fileSize = (entry[28] & 0xFF) | ((entry[29] & 0xFF) << 8) | ((entry[30] & 0xFF) << 16) | ((entry[31] & 0xFF) << 24);
+            return OK;
+        }
+    }
+    return FILE_NOT_FOUND;
+}
+
+enum FS_ERROR fat12_load_file(struct FILE* file, void** buf, uint64_t* bytesRead)
+{
+    if(file->isDirectory != 0) return NOT_A_DIRECTORY;
     uint32_t numSectors = 0;
     uint16_t currentCluster = file->firstCluster;
     while(currentCluster != 0x0FFF)
@@ -88,5 +134,6 @@ uint64_t fat12_load_file(struct FILE* file, void** buf)
         i++;
     }
 
-    return numSectors * 512;
+    *bytesRead =  numSectors * 512;
+    return OK;
 }

@@ -2,6 +2,7 @@
 #define FAT12_H
 
 #include "../kernel/kern_mem.h"
+#include "../libc/dynamic_array.h"
 #include "disk.h"
 
 struct FILE {
@@ -17,12 +18,12 @@ struct FILE_ENUMERATION {
 };
 
 struct fat12_fs_info {
-    struct mbr_info* mbr;
+    struct fat12_mbr_info* mbr;
     uintptr_t fat;
     uintptr_t rootDir;
 };
 
-struct __attribute__((__packed__)) mbr_info {
+struct __attribute__((__packed__)) fat12_mbr_info {
     uint8_t reserved1;
     uint16_t reserved2;
     char OEMName[8];
@@ -46,8 +47,9 @@ struct __attribute__((__packed__)) mbr_info {
     char fatType[8];
 };
 
-void fat12_initialize_info(struct mbr_info* mbr, uintptr_t fat, uintptr_t rootDir);
-void fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out);
-uint64_t fat12_load_file(struct FILE* file, void** buf);
+void fat12_initialize_info(struct fat12_mbr_info* mbr, uintptr_t fat, uintptr_t rootDir);
+enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out);
+enum FS_ERROR fat12_find_file(char path[], struct FILE* output);
+enum FS_ERROR fat12_load_file(struct FILE* file, void** buf, uint64_t* bytesRead);
 
 #endif
