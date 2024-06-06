@@ -17,7 +17,17 @@ enum FS_TYPE
     FAT32
 };
 
+struct FS_FUNCTIONS
+{
+    enum FS_TYPE fs_format;
+    enum FS_ERROR (*enumerate_files)(struct FILE* directory, struct FILE_ENUMERATION* out);
+    enum FS_ERROR (*find_file)(char path[], struct FILE* output);
+    enum FS_ERROR (*load_file)(struct FILE* file, void** buf, uint64_t* bytesRead);
+};
+
 void prepare_kernel_fs(Array* pci_devices);
+struct FS_FUNCTIONS* fs_get_functions();
+
 uintptr_t load_mbr();
 uintptr_t load_fat(struct fat12_mbr_info* mbr);
 uintptr_t load_root_directory(struct fat12_mbr_info* mbr);

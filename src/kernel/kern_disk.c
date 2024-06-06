@@ -1,6 +1,6 @@
 #include "kern_disk.h"
 
-static enum FS_TYPE fs_format;
+static struct FS_FUNCTIONS fs_functions;
 
 void prepare_kernel_fs(Array* pci_devices)
 {
@@ -17,6 +17,7 @@ void prepare_kernel_fs(Array* pci_devices)
         {
             setDiskReader = 1;
             set_disk_reader(ata_read_sectors_from_disk);
+            set_disk_writer(ata_write_sectors_to_disk);
             break;
         }
     }
@@ -50,6 +51,11 @@ void prepare_kernel_fs(Array* pci_devices)
             uintptr_t fat = load_fat((struct fat12_mbr_info*)mbr);
             uintptr_t root_directory = load_root_directory((struct fat12_mbr_info*)mbr);
             fat12_initialize_info((struct fat12_mbr_info*)mbr, fat, root_directory);
+
+            fs_functions.fs_format = FAT12;
+            fs_functions.enumerate_files = fat12_enumerate_files;
+            fs_functions.find_file = fat12_find_file;
+            fs_functions.load_file = fat12_load_file;
             log(1, "File system successfully loaded!");
             return;
         }
@@ -68,6 +74,11 @@ void prepare_kernel_fs(Array* pci_devices)
     }
 
     log(3, "Unable to detect the file system type of the current disk. No file system will be loaded.");
+}
+
+struct FS_FUNCTIONS* fs_get_functions()
+{
+    return &fs_functions;
 }
 
 uintptr_t load_mbr()
