@@ -19,6 +19,8 @@ void fat12_initialize_info(struct fat12_mbr_info* mbr, uintptr_t fat, uintptr_t 
 
 enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
 {
+    if(fs_info == NULL)
+        return FS_UNINITIALIZED;
     struct FILE* f_enum = (struct FILE*)mm_allocate(sizeof(struct FILE) * fs_info->mbr->rootEntryCount);
     uint32_t numFiles = 0;
     if(strcmp(directory->path, "/") == 0)
@@ -57,6 +59,8 @@ enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERAT
 
 enum FS_ERROR fat12_find_file(char path[], struct FILE* output)
 {
+    if(fs_info == NULL)
+        return FS_UNINITIALIZED;
     Array path_split;
     strsplit_indices(path, '/', &path_split);
     if(path_split.used != 1 || path[0] != '/')
@@ -94,6 +98,8 @@ enum FS_ERROR fat12_find_file(char path[], struct FILE* output)
 
 enum FS_ERROR fat12_load_file(struct FILE* file, void** buf, uint64_t* bytesRead)
 {
+    if(fs_info == NULL)
+        return FS_UNINITIALIZED;
     if(file->isDirectory != 0) return NOT_A_DIRECTORY;
     uint32_t numSectors = 0;
     uint16_t currentCluster = file->firstCluster;

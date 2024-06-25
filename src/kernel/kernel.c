@@ -58,7 +58,7 @@ void kernel_main(struct multiboot_info* bootInfo, int legacyMemorySize) {
 
 
 	kprint("You are currently in the protected mode shell, type END to stop the machine.\n> ");
-	
+
 	//All the initialization is done and everything else is event-driven, we just yield here
 	while(1);
 }
@@ -137,7 +137,7 @@ void user_input(char *input)
 	else if(shell_context == 5)
 	{
 		struct FILE selectedFile;
-		enum FS_ERROR err = fat12_find_file(input, &selectedFile);
+		enum FS_ERROR err = fs_get_functions()->find_file(input, &selectedFile);
 		if(err == OK)
 		{
 			kprint("Reading file ");
@@ -146,7 +146,7 @@ void user_input(char *input)
 
 			void* fileContents = (uintptr_t*)NULL;
 			uint64_t* bytesRead;
-			enum FS_ERROR err = fat12_load_file(&selectedFile, &fileContents, bytesRead);
+			enum FS_ERROR err = fs_get_functions()->load_file(&selectedFile, &fileContents, bytesRead);
 
 			if(err == OK)
 			{
@@ -226,7 +226,7 @@ void user_input(char *input)
             currentDirectory.firstCluster = 0;
 
             struct FILE_ENUMERATION files;
-            fat12_enumerate_files(&currentDirectory, &files);
+            fs_get_functions()->enumerate_files(&currentDirectory, &files);
             
 			kprint("Contents of ");
 			kprint(currentDirectory.path);
