@@ -25,18 +25,51 @@ enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERAT
     uint32_t numFiles = 0;
     if(strcmp(directory->path, "/") == 0)
     {
+        uint8_t longNameLength = 0;
+        char fileName[261] = "";
         for(int i = 0; i < fs_info->mbr->rootEntryCount; i++)
         {
             char* entry = (char*)(fs_info->rootDir) + (i * 32);
+
+            // Check for long file name entries
+            if(entry[11] == 0xF)
+            {
+                if(longNameLength < 260)
+                {
+                    log(4, "Yay");
+                    char* longNameFirst = &(entry[1]);
+                    char* longNameSecond = &(entry[14]);
+                    char* longNameThird = &(entry[28]);
+                    unicode_to_ascii(longNameFirst, 10);
+                    unicode_to_ascii(longNameSecond, 12);
+                    unicode_to_ascii(longNameThird, 4);
+                    strcat(fileName, longNameFirst, fileName);
+                    strcat(fileName, longNameSecond, fileName);
+                    strcat(fileName, longNameThird, fileName);
+                    longNameLength += 13;
+                    continue;
+                }
+                else
+                    continue;
+            }
+
             if((entry[11] & 0x8) != 0 || (entry[11] & 0x4) != 0) continue;
             if(entry[0] == 0x0) break;
             
-            char fileName[12];
-            for(int j = 0; j < 11; j++) fileName[j] = entry[j];
-            fileName[11] = '\0';
-            if(strlen(directory->path) > 244)
+
+            if(longNameLength == 0)
             {
-                log(4, "File enumeration failed; file path too long (> 256 characters).");
+                for(int j = 0; j < 11; j++) fileName[j] = entry[j];
+                fileName[11] = '\0';
+            }
+            else
+            {
+                fileName[longNameLength] = '\0';
+            }
+
+            if(strlen(directory->path) > 32756)
+            {
+                log(4, "File enumeration failed; file path too long (> 32768 characters).");
                 return INVALID_PATH;
             }
             strcat(directory->path, fileName, f_enum[numFiles].path);
@@ -45,6 +78,12 @@ enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERAT
             f_enum[numFiles].firstCluster = *(((uint16_t*)entry) + 13);
             f_enum[numFiles].fileSize = (entry[28] & 0xFF) | ((entry[29] & 0xFF) << 8) | ((entry[30] & 0xFF) << 16) | ((entry[31] & 0xFF) << 24);
             numFiles++;
+
+            if(longNameLength != 0)
+            {
+                longNameLength = 0;
+                fileName[0] = '\0';
+            }
         }
     }
     else

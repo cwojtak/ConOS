@@ -73,6 +73,17 @@ int atoi(const char *s) {
     return n;
 }
 
+// Creates an ASCII representation of Unicode characters by using every other character
+// numBytes must be an even number
+void unicode_to_ascii(char s[], uint32_t numBytes)
+{
+    for(uint32_t i = 0; i < numBytes; i += 2)
+    {
+        s[i / 2] = s[i];
+    }
+    s[numBytes / 2] = '\0';
+}
+
 /* K&R */
 void reverse(char s[]) {
     int c, i, j;

@@ -8,6 +8,7 @@
 
 void int_to_ascii(int n, char str[]);
 void hex_to_ascii(int n, char str[]);
+void unicode_to_ascii(char s[], uint32_t numBytes);
 int atoi(const char *s);
 void reverse(char s[]);
 int strlen(char s[]);

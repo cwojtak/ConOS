@@ -6,7 +6,7 @@
 #include "disk.h"
 
 struct FILE {
-    char path[256];
+    char path[32768];
     uint8_t isDirectory;
     uint16_t firstCluster;
     uint32_t fileSize;
