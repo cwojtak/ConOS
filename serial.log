@@ -19,9 +19,9 @@ INFO: Device 0x8086:0x100e - Base class 0x0, Sub class 0x0, Prog info 0x3
 INFO: Preparing kernel filesystem...
 INFO: Loading file system...
 INFO: File system successfully loaded!
-ALERT: Yay
-ALERT: Yay
-ALERT: Yay
-ALERT: Yay
-ALERT: Yay
-ALERT: Yay
+INFO: kernel.bin
+INFO: hello.txt
+INFO: hw.cpp
+INFO: rs.txt
+INFO: nameofmanychars.txt
+INFO: superlongfilenameofmanychars.txt

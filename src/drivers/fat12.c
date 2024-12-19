@@ -26,27 +26,48 @@ enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERAT
     if(strcmp(directory->path, "/") == 0)
     {
         uint8_t longNameLength = 0;
-        char fileName[261] = "";
+        char* fileName = (char*)mm_allocate(261);
+        fileName[0] = '\0';
         for(int i = 0; i < fs_info->mbr->rootEntryCount; i++)
         {
             char* entry = (char*)(fs_info->rootDir) + (i * 32);
 
             // Check for long file name entries
-            if(entry[11] == 0xF)
+            if(entry[11] == 0x0F)
             {
                 if(longNameLength < 260)
                 {
-                    log(4, "Yay");
+                    // Obtain parts of the long name from this entry
                     char* longNameFirst = &(entry[1]);
                     char* longNameSecond = &(entry[14]);
                     char* longNameThird = &(entry[28]);
+                    
+                    // "Convert" from Unicode to ASCII
                     unicode_to_ascii(longNameFirst, 10);
                     unicode_to_ascii(longNameSecond, 12);
                     unicode_to_ascii(longNameThird, 4);
-                    strcat(fileName, longNameFirst, fileName);
-                    strcat(fileName, longNameSecond, fileName);
-                    strcat(fileName, longNameThird, fileName);
+
+                    // Concatenate file name together
+                    char* fileNameTempBuffer = (char*)mm_allocate(MAX_FILENAME_SIZE);
+                    char* begin = fileNameTempBuffer;
+                    fileNameTempBuffer[13] = '\0';
+
+                    strcpy(longNameFirst, fileNameTempBuffer);
+                    fileNameTempBuffer += 5;
+                    strcpy(longNameSecond, fileNameTempBuffer);
+                    fileNameTempBuffer += 6;
+                    strcpy(longNameThird, fileNameTempBuffer);
+
+                    strcat(begin, fileName, begin);
+                    log(1, begin);
+                    strcpy(begin, fileName);
+
+                    // Increment name length
                     longNameLength += 13;
+
+                    // Free allocated memory
+                    mm_free((uintptr_t)fileNameTempBuffer);
+
                     continue;
                 }
                 else
@@ -85,6 +106,9 @@ enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERAT
                 fileName[0] = '\0';
             }
         }
+
+        // Free fileName memory
+        mm_free((uintptr_t)fileName);
     }
     else
     {

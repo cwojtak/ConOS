@@ -5,6 +5,9 @@
 #include "../libc/dynamic_array.h"
 #include "disk.h"
 
+#define MAX_FILENAME_SIZE 261 //Max file name size (with null character)
+#define MAX_PATH_SIZE 32768 //Max file name size (with null character)
+
 struct FILE {
     char path[32768];
     uint8_t isDirectory;

@@ -6,7 +6,7 @@ run: build/os-image.bin
 	qemu-system-x86_64 -serial file:serial.log -hda $<
 
 debug: build/os-image.bin
-	qemu-system-x86_64 -S -s -serial file:serial.log -hda os-image.bin
+	qemu-system-x86_64 -S -s -serial file:serial.log -hda $<
 
 build/os-image.bin:
 	(cd src && make)

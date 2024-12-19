@@ -130,6 +130,16 @@ void strcat(char s1[], char s2[], char s3[]) {
     }
 }
 
+void strcpy(char src[], char dest[])
+{
+    uint32_t i = 0;
+    while(src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+
 void backspace(char s[]) {
     int len = strlen(s);
     s[len-1] = '\0';
