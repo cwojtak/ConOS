@@ -10,7 +10,8 @@ enum FS_ERROR {
     INVALID_PATH,
     NOT_A_DIRECTORY,
     NOT_A_FILE,
-    FS_UNINITIALIZED
+    FS_UNINITIALIZED,
+    FS_INSUFFICIENT_SPACE
 };
 
 void set_disk_reader(int (*srsfd)(uint32_t, uint8_t, uintptr_t));

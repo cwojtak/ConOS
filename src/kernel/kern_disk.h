@@ -20,6 +20,8 @@ enum FS_TYPE
 struct FS_FUNCTIONS
 {
     enum FS_TYPE fs_format;
+    uint64_t (*get_total_space)();
+    uint64_t (*get_free_space)();
     enum FS_ERROR (*enumerate_files)(struct FILE* directory, struct FILE_ENUMERATION* out);
     enum FS_ERROR (*find_file)(char path[], struct FILE* output);
     enum FS_ERROR (*load_file)(struct FILE* file, void** buf, uint64_t* bytesRead);

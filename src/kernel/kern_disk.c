@@ -53,6 +53,8 @@ void prepare_kernel_fs(Array* pci_devices)
             fat12_initialize_info((struct fat12_mbr_info*)mbr, fat, root_directory);
 
             fs_functions.fs_format = FAT12;
+            fs_functions.get_total_space = fat12_get_total_space;
+            fs_functions.get_free_space = fat12_get_free_space;
             fs_functions.enumerate_files = fat12_enumerate_files;
             fs_functions.find_file = fat12_find_file;
             fs_functions.load_file = fat12_load_file;

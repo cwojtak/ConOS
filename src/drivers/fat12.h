@@ -24,6 +24,8 @@ struct fat12_fs_info {
     struct fat12_mbr_info* mbr;
     uintptr_t fat;
     uintptr_t rootDir;
+    uint64_t bytesFree;
+    uint64_t bytesTotal;
 };
 
 struct __attribute__((__packed__)) fat12_mbr_info {
@@ -51,8 +53,13 @@ struct __attribute__((__packed__)) fat12_mbr_info {
 };
 
 void fat12_initialize_info(struct fat12_mbr_info* mbr, uintptr_t fat, uintptr_t rootDir);
+uint64_t fat12_get_total_space();
+uint64_t fat12_get_free_space();
 enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out);
 enum FS_ERROR fat12_find_file(char path[], struct FILE* output);
 enum FS_ERROR fat12_load_file(struct FILE* file, void** buf, uint64_t* bytesRead);
+enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite);
+
+uint8_t fat12_checksum(char* shortName);
 
 #endif
