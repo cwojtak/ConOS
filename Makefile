@@ -17,6 +17,7 @@ build/os-image.bin:
 	sudo mount -o loop build/os-image.bin /mnt/ConOS
 	sudo cp src/kernel.bin /mnt/ConOS
 	sudo cp -r filesystem_addons/* /mnt/ConOS
+	df -B1 | grep /mnt/ConOS
 	sudo umount /mnt/ConOS
 	sudo rmdir /mnt/ConOS
 

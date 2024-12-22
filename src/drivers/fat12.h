@@ -55,6 +55,7 @@ struct __attribute__((__packed__)) fat12_mbr_info {
 void fat12_initialize_info(struct fat12_mbr_info* mbr, uintptr_t fat, uintptr_t rootDir);
 uint64_t fat12_get_total_space();
 uint64_t fat12_get_free_space();
+uint16_t fat12_get_cluster(uint32_t clusterNumber);
 enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out);
 enum FS_ERROR fat12_find_file(char path[], struct FILE* output);
 enum FS_ERROR fat12_load_file(struct FILE* file, void** buf, uint64_t* bytesRead);

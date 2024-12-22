@@ -17,21 +17,22 @@ void fat12_initialize_info(struct fat12_mbr_info* mbr, uintptr_t fat, uintptr_t 
     fs_info->rootDir = rootDir;
 
     // Record available space on disk
-    uint64_t totalSectors = fs_info->mbr->totalSectors16;
-    if(totalSectors == 0)
-        totalSectors = fs_info->mbr->totalSectors32;
+    //Determine the total number of sectors of the filesystem
+    uint32_t totalSectors = 0;
+    if(fs_info->mbr->totalSectors16 != 0) totalSectors = fs_info->mbr->totalSectors16;
+    else totalSectors = fs_info->mbr->totalSectors32;
+
+    //Determine the number of clusters
+    uint32_t totalClusters = (totalSectors - (fs_info->mbr->reservedSectorCount + (fs_info->mbr->numFats * fs_info->mbr->fatSize) +
+        (((fs_info->mbr->rootEntryCount * 32) + fs_info->mbr->bytesPerSector - 1) / fs_info->mbr->bytesPerSector))) / fs_info->mbr->sectorsPerCluster;
     
-    fs_info->bytesTotal = totalSectors * fs_info->mbr->bytesPerSector;
+    fs_info->bytesTotal = (totalClusters) * fs_info->mbr->bytesPerSector;
     fs_info->bytesFree = 0;
 
-    for(uint32_t i = 0; i < totalSectors; i += 3)
+    for(uint32_t i = 2; i < totalClusters + 2; i++)
     {
-        uint8_t* pointer = (uint8_t*)(fs_info->fat + i);
-
-        if((*(pointer) & 0x000FFF) == 0)
-            fs_info->bytesFree += fs_info->mbr->bytesPerSector;
-        if((*(pointer) & 0xFFF000) == 0)
-            fs_info->bytesFree += fs_info->mbr->bytesPerSector;
+        if(fat12_get_cluster(i) == 0)
+            fs_info->bytesFree += 512;
     }
 }
 
@@ -49,6 +50,18 @@ uint64_t fat12_get_free_space()
         return 0;
     else
         return fs_info->bytesFree;
+}
+
+uint16_t fat12_get_cluster(uint32_t clusterNumber)
+{
+    uint32_t offset = clusterNumber * 1.5;
+    uint16_t entry;
+    if(clusterNumber % 2 == 0)
+        entry = (((uint8_t*)(fs_info->fat))[offset] | (((uint8_t*)(fs_info->fat))[offset + 1] << 8)) & 0x0FFF;
+    else
+        entry = (((uint8_t*)(fs_info->fat))[offset] >> 4) | (((uint8_t*)(fs_info->fat))[offset + 1] << 4); 
+    
+    return entry;
 }
 
 enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
@@ -426,6 +439,9 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
     finalEntry[25] = 0;
     *(uint32_t*)&(finalEntry[28]) = bytesToWrite;
 
+
+    // Mark FAT clusters
+    
     //TODO: mark FAT clusters, set first FAT cluster in directory entry, write file contents
     //TODO: write all in-memory changes to disk
     //TODO: support editing a file
