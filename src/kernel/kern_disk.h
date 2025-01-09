@@ -25,6 +25,7 @@ struct FS_FUNCTIONS
     enum FS_ERROR (*enumerate_files)(struct FILE* directory, struct FILE_ENUMERATION* out);
     enum FS_ERROR (*find_file)(char path[], struct FILE* output);
     enum FS_ERROR (*load_file)(struct FILE* file, void** buf, uint64_t* bytesRead);
+    enum FS_ERROR (*write_file)(char path[], void** buf, uint32_t bytesToWrite);
 };
 
 void prepare_kernel_fs(Array* pci_devices);

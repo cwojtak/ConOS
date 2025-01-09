@@ -58,6 +58,7 @@ void prepare_kernel_fs(Array* pci_devices)
             fs_functions.enumerate_files = fat12_enumerate_files;
             fs_functions.find_file = fat12_find_file;
             fs_functions.load_file = fat12_load_file;
+            fs_functions.write_file = fat12_write_file;
             log(1, "File system successfully loaded!");
             return;
         }

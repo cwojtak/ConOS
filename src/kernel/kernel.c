@@ -169,30 +169,21 @@ void user_input(char *input)
 	}
 	else if(shell_context == 6)
 	{
-		struct FILE selectedFile;
-		enum FS_ERROR err = fs_get_functions()->find_file(input, &selectedFile);
+		kprint("Writing file ");
+		kprint(input);
+		kprint(":\n");
+
+		char* fileContents = "Heyo, world!!";
+		uint32_t bytesToWrite = 14;
+		enum FS_ERROR err = fs_get_functions()->write_file(input, (void**)&fileContents, bytesToWrite);
+
 		if(err == OK)
 		{
-			kprint("Writing file ");
-			kprint(selectedFile.path);
-			kprint(":\n");
-
-			void* fileContents = (uintptr_t*)NULL;
-			uint64_t* bytesRead;
-			enum FS_ERROR err = fs_get_functions()->load_file(&selectedFile, &fileContents, bytesRead);
-
-			if(err == OK)
-			{
-				char* fileText = (char*)fileContents;
-				kprint(fileText);
-			}
-			else
-				kprint("An error occurred while writing this file. Please try again.");
+			char* fileText = (char*)fileContents;
+			kprint(fileText);
 		}
 		else
-		{
 			kprint("An error occurred while writing this file. Please try again.");
-		}
 		shell_context = 0;
 		kprint("\n> ");
 	}
