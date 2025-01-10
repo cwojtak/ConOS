@@ -54,18 +54,15 @@ uint64_t fat12_get_free_space()
 
 uint16_t fat12_get_cluster(uint32_t clusterNumber)
 {
-    uint32_t offset = clusterNumber * 3 / 2;
-    uint16_t entry;
-
-    uint8_t first = ((uint8_t*)(fs_info->fat))[offset];
-    uint8_t second = ((uint8_t*)(fs_info->fat))[offset + 1];
-
-    if(clusterNumber % 2 == 0)
-        entry = (first | second << 8) & 0x0FFF;
+    uintptr_t fat_entry_offset = fs_info->fat;
+    fat_entry_offset += clusterNumber + clusterNumber / 2;
+    uint16_t clusterEntry = 0;
+    if (clusterNumber % 2 == 0)
+        clusterEntry = (*((uint16_t*)fat_entry_offset) & 0x0FFF);
     else
-        entry = (first >> 4) | (second << 4); 
-    
-    return entry;
+        clusterEntry = (*((uint16_t*)fat_entry_offset) >> 4);
+
+    return clusterEntry;
 }
 
 void fat12_set_cluster(uint32_t clusterNumber, uint16_t value)
@@ -82,6 +79,8 @@ void fat12_set_cluster(uint32_t clusterNumber, uint16_t value)
         ((uint8_t*)(fs_info->fat))[offset] = (((uint8_t*)(fs_info->fat))[offset] & 0x0F) | ((value << 4) & 0xF0);
         ((uint8_t*)(fs_info->fat))[offset + 1] = (value >> 4) & 0xFF;
     }
+
+    write_sectors_to_disk(fs_info->mbr->reservedSectorCount, offset, 3, (uintptr_t)&(((uint8_t*)(fs_info->fat))[offset]));
 }
 
 enum FS_ERROR fat12_enumerate_files(struct FILE* directory, struct FILE_ENUMERATION* out)
@@ -314,15 +313,7 @@ enum FS_ERROR fat12_load_file(struct FILE* file, void** buf, uint64_t* bytesRead
         data_offset += currentCluster - 2;
         read_sectors_from_disk(data_offset, 1, ((uintptr_t)(*buf)) + i * 512);
 
-        uintptr_t fat_entry_offset = fs_info->fat;
-        fat_entry_offset += currentCluster + currentCluster / 2;
-        uint16_t clusterEntry = 0;
-        if (currentCluster % 2 == 0)
-            clusterEntry = (*((uint16_t*)fat_entry_offset) & 0x0FFF);
-        else
-            clusterEntry = (*((uint16_t*)fat_entry_offset) >> 4);
-
-        currentCluster = clusterEntry;
+        currentCluster = fat12_get_cluster(currentCluster);
         i++;
     }
 
@@ -339,7 +330,7 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
     // Identify the path and make sure it is valid
     Array path_split;
     strsplit_indices(path, '/', &path_split);
-    if(path_split.used != 1 || path[0] != '/')
+    if(path_split.used != 1 || path[0] != '/' || strlen(path) <= 1)
     {
         log(3, "Invalid path provided for FAT 12 filesystem.");
         return INVALID_PATH;
@@ -373,7 +364,7 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
     // Find next empty root directory entry table entry
     uint8_t numEntriesRequired = 2;
     if(fileNameLength > 13)
-        numEntriesRequired += (fileNameLength - 13) / 13;
+        numEntriesRequired += (fileNameLength - 13) / 13 + 1;
     char* foundEntry = NULL;
     uint8_t numSuccessiveEntries = 0;
     for(uint32_t i = 0; i < fs_info->mbr->rootEntryCount; i++)
@@ -407,21 +398,29 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
     
     uint8_t checksum = fat12_checksum((char*)fileName);
 
+    // Write the entries
+    uint32_t fat_size = fs_info->mbr->fatSize;
+    uint32_t fat_offset = fs_info->mbr->reservedSectorCount;
+    uint32_t num_fats = fs_info->mbr->numFats;
+
+    uint32_t root_size = fs_info->mbr->rootEntryCount * 32 / fs_info->mbr->bytesPerSector;
+    uint32_t root_offset = fat_offset + (num_fats * fat_size);
+
     char* fileNamePointer = (char*)fileName;
     for(uint8_t i = 1; i < numEntriesRequired; i++)
     {
         // Turn long file name into chunks
-        char unicodeBuf3[4] = "";
-        ascii_to_unicode(fileNamePointer, unicodeBuf3, 2);
-        fileNamePointer += 2;
-        
+        char unicodeBuf1[10] = "";
+        ascii_to_unicode(fileNamePointer, unicodeBuf1, 5);
+        fileNamePointer += 5;
+
         char unicodeBuf2[12] = "";
         ascii_to_unicode(fileNamePointer, unicodeBuf2, 6);
         fileNamePointer += 6;
 
-        char unicodeBuf1[10] = "";
-        ascii_to_unicode(fileNamePointer, unicodeBuf1, 5);
-        fileNamePointer += 5;
+        char unicodeBuf3[4] = "";
+        ascii_to_unicode(fileNamePointer, unicodeBuf3, 2);
+        fileNamePointer += 2;
 
         // Create long name entry
         char* currentEntry = foundEntry + ((numEntriesRequired - i - 1) * 32);
@@ -436,6 +435,8 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
         currentEntry[26] = 0;
         currentEntry[27] = 0;
         mm_copy((uintptr_t)unicodeBuf3, (uintptr_t)(currentEntry + 28), 4);
+
+        write_sectors_to_disk(root_offset, ((uintptr_t)currentEntry - fs_info->rootDir), 32, (uintptr_t)currentEntry);
     }
 
     // Write final entry
@@ -458,37 +459,38 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
     finalEntry[25] = 0;
     *(uint32_t*)&(finalEntry[28]) = bytesToWrite;
 
-
     // Mark FAT clusters
     uint16_t* usedClusters = (uint16_t*)mm_allocate(sizeof(uint16_t) * (bytesToWrite / fs_info->mbr->bytesPerSector + 1));
 
-    uint32_t sectorCnt = 0;
-    uint32_t clusterIdx = 0;
-    while(sectorCnt < bytesToWrite / fs_info->mbr->bytesPerSector + 1)
+    uint32_t clusterCnt = 0;
+    uint32_t clusterIdx = 2;
+    while(clusterCnt < bytesToWrite / fs_info->mbr->bytesPerSector + 1)
     {
         uint16_t cluster = fat12_get_cluster(clusterIdx);
 
         if(cluster == 0x0)
         {
-            usedClusters[sectorCnt] = clusterIdx;
-            if(sectorCnt > 0)
-                fat12_set_cluster(usedClusters[sectorCnt - 1], clusterIdx);
-            sectorCnt++;
+            usedClusters[clusterCnt] = clusterIdx;
+            if(clusterCnt > 0)
+                fat12_set_cluster(usedClusters[clusterCnt - 1], clusterIdx);
+            clusterCnt++;
         }
         clusterIdx++;
     }
-    fat12_set_cluster(usedClusters[sectorCnt - 1], 0xFFF);
+    fat12_set_cluster(usedClusters[clusterCnt - 1], 0xFFF);
 
     // Set first FAT cluster in directory entry
     *(uint16_t*)&(finalEntry[26]) = usedClusters[0];
 
+    write_sectors_to_disk(root_offset, ((uintptr_t)finalEntry - fs_info->rootDir), 32, (uintptr_t)finalEntry);
+
     // Write file contents to disk
     uint32_t data_offset = fs_info->mbr->reservedSectorCount + (fs_info->mbr->numFats * fs_info->mbr->fatSize) + (fs_info->mbr->rootEntryCount * 32 / fs_info->mbr->bytesPerSector);
     
-    for(int i = 0; i < sectorCnt; i++)
+    for(int i = 0; i < clusterCnt; i++)
     {
         uint16_t writeLength;
-        if(i == sectorCnt - 1)
+        if(i == clusterCnt - 1)
             writeLength = bytesToWrite % fs_info->mbr->bytesPerSector;
         else
             writeLength = fs_info->mbr->bytesPerSector;
@@ -496,7 +498,7 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
         uint32_t addr = data_offset + (usedClusters[i] - 2) * fs_info->mbr->sectorsPerCluster;
         write_sectors_to_disk(addr, 0, writeLength, (uintptr_t)*buf);
 
-        if(i == sectorCnt - 1)
+        if(i == clusterCnt - 1)
         {
             uintptr_t zeros = mm_allocate(fs_info->mbr->bytesPerSector - writeLength);
             mm_set(zeros, 0, fs_info->mbr->bytesPerSector - writeLength);
@@ -505,11 +507,9 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
         }
     }
 
-    mm_free((uintptr_t)usedClusters);
+    fs_info->bytesFree -= clusterCnt * fs_info->mbr->bytesPerSector * fs_info->mbr->sectorsPerCluster;
 
-    //TODO: bugfix this function (error seems to be in the get cluster and set cluster functions)
-    //TODO: write all in-memory changes to disk
-    //TODO: support editing a file
+    mm_free((uintptr_t)usedClusters);
 
     return OK;
 }

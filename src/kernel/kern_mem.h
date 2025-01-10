@@ -42,6 +42,7 @@ uintptr_t mm_getMemoryStart();
 unsigned mm_getMemoryLimit();
 
 void mm_logblock(int blocknum);
+void mm_logmap();
 
 void mm_copy(uintptr_t src, uintptr_t dest, size_t len);
 void mm_set(uintptr_t dest, uint8_t val, size_t len);

@@ -135,6 +135,7 @@ void user_input(char *input)
 		shell_context = 0;
 		kprint("\n> ");
 	}
+	//READ_FILE shell context
 	else if(shell_context == 5)
 	{
 		struct FILE selectedFile;
@@ -167,6 +168,7 @@ void user_input(char *input)
 		shell_context = 0;
 		kprint("\n> ");
 	}
+	//WRITE_FILE shell context
 	else if(shell_context == 6)
 	{
 		kprint("Writing file ");
@@ -205,6 +207,7 @@ void user_input(char *input)
 			kprint("ALLOC_MEM - Allocate some memory\n");
 			kprint("FREE_MEM - Free some memory\n");
 			kprint("PRINT_MEM - Print memory at a certain address\n");
+			kprint("ALLOC_MAP - Log a map of memory allocations\n");
             kprint("LS - List all the files in the current working directory\n");
 			kprint("READ_FILE - Print the contents of a file on the hard drive\n");
 			kprint("WRITE_FILE - Write \"Hello, world!\" to a specified file\n");
@@ -239,6 +242,11 @@ void user_input(char *input)
 		{
 			shell_context = 4;
 			kprint("Enter the address (base 10) to print (enter 0 to cancel): ");
+		}
+		else if (strcmp(input, "ALLOC_MAP") == 0)
+		{
+			mm_logmap();
+			kprint("\n> ");
 		}
         else if (strcmp(input, "LS") == 0)
         {

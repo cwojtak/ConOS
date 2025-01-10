@@ -53,7 +53,13 @@ int ata_read_sectors_from_disk(uint32_t lba_sector, uint8_t num_sectors, uintptr
 
 int ata_try_write_sectors_to_disk(uint32_t lba_sector, uint16_t offset, uint16_t length, uintptr_t buf)
 {
-    if(lba_sector > 0x0FFFFFFF || offset > 511) return -1;
+    if(lba_sector > 0x0FFFFFFF) return -1;
+
+    if(offset > 511)
+    {
+        lba_sector += offset / 512;
+        offset = offset % 512;
+    }
 
     uint32_t numSectors = (length / 512) + (((length % 512) + offset) / 512) + 1;
 
