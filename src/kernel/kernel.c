@@ -181,7 +181,7 @@ void user_input(char *input)
 
 		if(err == OK)
 		{
-			char* fileText = (char*)fileContents;
+			char* fileText = fileContents;
 			kprint(fileText);
 		}
 		else

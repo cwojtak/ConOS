@@ -486,7 +486,9 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
 
     // Write file contents to disk
     uint32_t data_offset = fs_info->mbr->reservedSectorCount + (fs_info->mbr->numFats * fs_info->mbr->fatSize) + (fs_info->mbr->rootEntryCount * 32 / fs_info->mbr->bytesPerSector);
-    
+
+    char* buffer = *buf;
+
     for(int i = 0; i < clusterCnt; i++)
     {
         uint16_t writeLength;
@@ -496,7 +498,10 @@ enum FS_ERROR fat12_write_file(char path[], void** buf, uint32_t bytesToWrite)
             writeLength = fs_info->mbr->bytesPerSector;
 
         uint32_t addr = data_offset + (usedClusters[i] - 2) * fs_info->mbr->sectorsPerCluster;
-        write_sectors_to_disk(addr, 0, writeLength, (uintptr_t)*buf);
+
+        write_sectors_to_disk(addr, 0, writeLength, (uintptr_t)buffer);
+
+        buffer += fs_info->mbr->bytesPerSector;
 
         if(i == clusterCnt - 1)
         {

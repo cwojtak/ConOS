@@ -135,7 +135,8 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 		current_ent->lastContig = end;
 		current_ent++;
 	}
-	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
+	struct MemoryManagerEntry* stopping_ent = current_ent->lastContig;
+	while(current_ent < stopping_ent + 1)
 	{
 		current_ent->firstContig = start_ent + 1;
 		current_ent++;
@@ -217,7 +218,8 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 		current_ent->lastContig = end;
 		current_ent++;
 	}
-	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
+	struct MemoryManagerEntry* stopping_ent = current_ent->lastContig;
+	while(current_ent != stopping_ent + 1)
 	{
 		current_ent->firstContig = start_ent + 1;
 		current_ent++;
@@ -280,17 +282,12 @@ int mm_free(uintptr_t address)
 		current_ent = start_ent;
 		while(current_ent != pastEndOfOriginalAlloc)
 		{
-			if(leftContig != start_ent->firstContig)
-			{
-				current_ent->firstContig = leftContig;
-			}
-			if(rightContig != start_ent->lastContig)
-			{
-				current_ent->lastContig = rightContig;
-			}
+			current_ent->firstContig = leftContig;
+			current_ent->lastContig = rightContig;
 			current_ent++;
 		}
 	}
+
 	return 0;
 }
 
