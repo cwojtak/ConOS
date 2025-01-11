@@ -73,6 +73,27 @@ int atoi(const char *s) {
     return n;
 }
 
+// Creates an ASCII representation of Unicode characters by using every other character
+// numUnicodeBytes must be an even number
+void unicode_to_ascii(char s[], char s2[], uint32_t numUnicodeBytes)
+{
+    for(uint32_t i = 0; i < numUnicodeBytes; i += 2)
+    {
+        s2[i / 2] = s[i];
+    }
+    s2[numUnicodeBytes / 2] = '\0';
+}
+
+// Creates a Unicode representation of ASCII characters
+void ascii_to_unicode(char s[], char s2[], uint32_t numAsciiBytes)
+{
+    for(uint32_t i = 0; i < numAsciiBytes; i++)
+    {
+        s2[i * 2] = s[i];
+        s2[i * 2 + 1] = '\0';
+    }
+}
+
 /* K&R */
 void reverse(char s[]) {
     int c, i, j;
@@ -117,6 +138,16 @@ void strcat(char s1[], char s2[], char s3[]) {
             s3[i] = s2[i - len1];
         }
     }
+}
+
+void strcpy(char src[], char dest[])
+{
+    uint32_t i = 0;
+    while(src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
 }
 
 void backspace(char s[]) {

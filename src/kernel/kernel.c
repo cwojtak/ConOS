@@ -6,6 +6,7 @@
 //3 = FREE_MEM
 //4 = PRINT_MEM
 //5 = READ_FILE
+//6 = WRITE_FILE
 static int shell_context = 0;
 
 /*
@@ -134,6 +135,7 @@ void user_input(char *input)
 		shell_context = 0;
 		kprint("\n> ");
 	}
+	//READ_FILE shell context
 	else if(shell_context == 5)
 	{
 		struct FILE selectedFile;
@@ -166,6 +168,27 @@ void user_input(char *input)
 		shell_context = 0;
 		kprint("\n> ");
 	}
+	//WRITE_FILE shell context
+	else if(shell_context == 6)
+	{
+		kprint("Writing file ");
+		kprint(input);
+		kprint(":\n");
+
+		char* fileContents = "Heyo, world!!";
+		uint32_t bytesToWrite = 14;
+		enum FS_ERROR err = fs_get_functions()->write_file(input, (void**)&fileContents, bytesToWrite);
+
+		if(err == OK)
+		{
+			char* fileText = fileContents;
+			kprint(fileText);
+		}
+		else
+			kprint("An error occurred while writing this file. Please try again.");
+		shell_context = 0;
+		kprint("\n> ");
+	}
 	//Identify user commands
 	else
 	{
@@ -184,8 +207,11 @@ void user_input(char *input)
 			kprint("ALLOC_MEM - Allocate some memory\n");
 			kprint("FREE_MEM - Free some memory\n");
 			kprint("PRINT_MEM - Print memory at a certain address\n");
+			kprint("ALLOC_MAP - Log a map of memory allocations\n");
             kprint("LS - List all the files in the current working directory\n");
 			kprint("READ_FILE - Print the contents of a file on the hard drive\n");
+			kprint("WRITE_FILE - Write \"Hello, world!\" to a specified file\n");
+			kprint("FS_INFO - Get the size and available space of the filesystem\n");
 			kprint("> ");
 		}
 		else if (strcmp(input, "COM_TEST") == 0)
@@ -216,6 +242,11 @@ void user_input(char *input)
 		{
 			shell_context = 4;
 			kprint("Enter the address (base 10) to print (enter 0 to cancel): ");
+		}
+		else if (strcmp(input, "ALLOC_MAP") == 0)
+		{
+			mm_logmap();
+			kprint("\n> ");
 		}
         else if (strcmp(input, "LS") == 0)
         {
@@ -253,6 +284,30 @@ void user_input(char *input)
 		{
 			shell_context = 5;
 			kprint("Enter the full path of the file to read: ");
+		}
+		else if(strcmp(input, "WRITE_FILE") == 0)
+		{
+			shell_context = 6;
+			kprint("Enter the full path of the file to write to: ");
+		}
+		else if(strcmp(input, "FS_INFO") == 0)
+		{
+			uint64_t free = fs_get_functions()->get_free_space();
+			uint64_t total = fs_get_functions()->get_total_space();
+
+			char buf[16] = "";
+			char buf2[16] = "";
+
+			int_to_ascii(free, buf);
+			int_to_ascii(total, buf2);
+
+			kprint("Filesystem Space Total: ");
+			kprint(buf2);
+			kprint(" B\n");
+
+			kprint("Filesystem Space Free: ");
+			kprint(buf);
+			kprint(" B\n> ");
 		}
 		else
 		{

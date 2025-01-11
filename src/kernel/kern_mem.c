@@ -72,7 +72,7 @@ void mm_shutdown()
 void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 {
     //Ensure the sizeInBytes is valid
-	if (sizeInBytes < 0) return;
+	if (sizeInBytes <= 0) return;
 
 	//Calculate starting entry
 	int sizeInBlocks = sizeInBytes / theMemoryManager->_mmBlockLength;
@@ -93,13 +93,15 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 			current_ent->lastContig = start_ent - 1;
 			current_ent++;
 		}
-		while(current_ent != theMemoryManager->_mmListEnd)
+		struct MemoryManagerEntry* stopping_ent = current_ent->lastContig;
+		while(current_ent != stopping_ent + 1)
 		{
 			current_ent->firstContig = start_ent + 1;
 			current_ent++;
 		}
 		start_ent->firstContig = start_ent;
 		start_ent->lastContig = start_ent;
+
 		return;
 	}
 
@@ -133,7 +135,8 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 		current_ent->lastContig = end;
 		current_ent++;
 	}
-	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
+	struct MemoryManagerEntry* stopping_ent = current_ent->lastContig;
+	while(current_ent < stopping_ent + 1)
 	{
 		current_ent->firstContig = start_ent + 1;
 		current_ent++;
@@ -143,7 +146,7 @@ void mm_reserveat(size_t sizeInBytes, uintptr_t location)
 uintptr_t mm_allocate(size_t sizeInBytes)
 {
 	//Ensure the sizeInBytes is valid
-	if (sizeInBytes < 0) return (uintptr_t)NULL;
+	if (sizeInBytes <= 0) return (uintptr_t)NULL;
 
 	int sizeInBlocks = sizeInBytes / theMemoryManager->_mmBlockLength;
 	struct MemoryManagerEntry* start_ent = theMemoryManager->_allocator(sizeInBytes, theMemoryManager->_mmList);
@@ -170,7 +173,8 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 			current_ent->lastContig = start_ent - 1;
 			current_ent++;
 		}
-		while(current_ent != theMemoryManager->_mmListEnd)
+		struct MemoryManagerEntry* stopping_ent = current_ent->lastContig;
+		while(current_ent != stopping_ent + 1)
 		{
 			current_ent->firstContig = start_ent + 1;
 			current_ent++;
@@ -214,7 +218,8 @@ uintptr_t mm_allocate(size_t sizeInBytes)
 		current_ent->lastContig = end;
 		current_ent++;
 	}
-	while(current_ent != theMemoryManager->_mmListEnd && current_ent != theMemoryManager->_mmListEnd + 1)
+	struct MemoryManagerEntry* stopping_ent = current_ent->lastContig;
+	while(current_ent != stopping_ent + 1)
 	{
 		current_ent->firstContig = start_ent + 1;
 		current_ent++;
@@ -277,17 +282,12 @@ int mm_free(uintptr_t address)
 		current_ent = start_ent;
 		while(current_ent != pastEndOfOriginalAlloc)
 		{
-			if(leftContig != start_ent->firstContig)
-			{
-				current_ent->firstContig = leftContig;
-			}
-			if(rightContig != start_ent->lastContig)
-			{
-				current_ent->lastContig = rightContig;
-			}
+			current_ent->firstContig = leftContig;
+			current_ent->lastContig = rightContig;
 			current_ent++;
 		}
 	}
+
 	return 0;
 }
 
@@ -351,6 +351,61 @@ void mm_logblock(int blocknum)
 	else appendstr(output, " type: (RESRV)");
 
 	log(1, output);
+}
+
+void mm_logmap()
+{
+	if (theMemoryManager->_memStart == (uintptr_t)NULL)
+    {
+        log(4, "Attempted to log a map of allocated memory blocks before initalizing the memory manager. Ignoring...");
+        return;
+    }
+
+	struct MemoryManagerEntry* current_ent = theMemoryManager->_mmList;
+	struct MemoryManagerEntry* cur_start = NULL;
+	struct MemoryManagerEntry* cur_end = NULL;
+
+	log(1, "Memory Map Entry Start Address: ");
+	char strt[16] = "";
+	hex_to_ascii((int)theMemoryManager->_mmList, strt);
+	log(1, strt);
+
+	log(1, "Memory Map Entry End Address: ");
+	char end[16] = "";
+	hex_to_ascii((int)theMemoryManager->_mmListEnd, end);
+	log(1, end);
+
+	log(1, "ENTRY ADDRESS, BLOCK START, BLOCK END, RESRV/FREE");
+	while(current_ent != theMemoryManager->_mmListEnd)
+	{
+		if(cur_start != current_ent->firstContig || cur_end != current_ent->lastContig)
+		{
+			cur_start = current_ent->firstContig;
+			cur_end = current_ent->lastContig;
+
+			char ent_addr[16] = "";
+			char blk_start[16] = "";
+			char blk_end[16] = "";
+			char msg[64] = "";
+
+			hex_to_ascii((int)current_ent, ent_addr);
+			hex_to_ascii((int)cur_start, blk_start);
+			hex_to_ascii((int)cur_end, blk_end);
+			
+			strcat(ent_addr, ", ", msg);
+			strcat(msg, blk_start, msg);
+			strcat(msg, ", ", msg);
+			strcat(msg, blk_end, msg);
+
+			if(current_ent->type == 1)
+				strcat(msg, ", RESRV", msg);
+			else
+				strcat(msg, ", FREE", msg);
+
+			log(1, msg);
+		}
+		current_ent++;
+	}
 }
 
 void mm_copy(uintptr_t src, uintptr_t dest, size_t len) 
