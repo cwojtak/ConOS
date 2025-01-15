@@ -6,7 +6,7 @@
 #include "../drivers/fat12.h"
 #include "kern_mem.h"
 #include "log.h"
-#include "../libc/dynamic_array.h"
+#include "../kernel_lib/dynamic_array.h"
 #include "kern_pci.h"
 
 

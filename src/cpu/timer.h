@@ -5,7 +5,7 @@
 
 #include "ports.h"
 #include "isr.h"
-#include "../libc/function.h"
+#include "../kernel_lib/function.h"
 
 void init_timer(uint32_t freq);
 

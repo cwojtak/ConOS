@@ -5,7 +5,7 @@
 
 #include "idt.h"
 #include "../drivers/screen.h"
-#include "../libc/string.h"
+#include "../kernel_lib/string.h"
 #include "ports.h"
 #include "timer.h"
 #include "../drivers/keyboard.h"

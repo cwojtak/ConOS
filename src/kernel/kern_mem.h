@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #include "log.h"
-#include "../libc/string.h"
+#include "../kernel_lib/string.h"
 
 struct MemoryManagerEntry {
     uint32_t type; //0 = AVAIL, 1 = RESRV

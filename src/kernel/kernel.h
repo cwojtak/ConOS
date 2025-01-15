@@ -4,7 +4,7 @@
 #include "../drivers/screen.h"
 #include "../drivers/fat12.h"
 #include "kern_disk.h"
-#include "../libc/string.h"
+#include "../kernel_lib/string.h"
 #include "../cpu/isr.h"
 #include "kern_mem.h"
 #include "kern_pci.h"

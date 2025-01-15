@@ -2,7 +2,7 @@
 #define FAT12_H
 
 #include "../kernel/kern_mem.h"
-#include "../libc/dynamic_array.h"
+#include "../kernel_lib/dynamic_array.h"
 #include "disk.h"
 
 #define MAX_FILENAME_SIZE 261 //Max file name size (with null character)

@@ -3,8 +3,8 @@
 
 #include "../cpu/ports.h"
 #include "../kernel/log.h"
-#include "../libc/string.h"
-#include "../libc/dynamic_array.h"
+#include "../kernel_lib/string.h"
+#include "../kernel_lib/dynamic_array.h"
 
 struct PCI_DEVICE
 {
